@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+
+/* Locked Pulse palette (Second Brain → Build Plan, 30 Aug 2026).
+   Type pair still to confirm from website-DESIGN.md. */
+@theme {
+  --color-ink: #1b2a4a;
+  --color-gold: #c9a227;
+  --color-sage: #2f7d6b;
+  --color-paper: #f7f5f0;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  @apply bg-paper text-ink antialiased;
+}
