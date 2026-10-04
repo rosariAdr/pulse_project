@@ -1,0 +1,50 @@
+# Supabase free plan: no automatic backups and no point-in-time recovery.
+# Nightly dump of PRODUCTION with the Supabase CLI, encrypted before it leaves
+# the runner (it contains student personal data — RGPD), kept 30 days as a
+# workflow artifact. Rehearse one restore before the pilot (board task).
+#
+# Secrets:
+#   SUPABASE_DB_URL_PROD   the *Session pooler* connection string (IPv4) from
+#                          Project Settings → Database, with the password
+#   BACKUP_PASSPHRASE      a long passphrase, kept by both founders offline
+#
+# Restore (on a fresh project):
+#   gpg -d backup.tar.gpg | tar x
+#   psql --single-transaction --variable ON_ERROR_STOP=1 --file roles.sql --file schema.sql \
+#        --command 'SET session_replication_role = replica' --file data.sql --dbname "$NEW_DB_URL"
+name: Nightly backup (prod)
+
+on:
+  schedule:
+    - cron: "40 2 * * *"   # every night, 02:40 UTC
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Dump roles, schema and data
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL_PROD }}
+        run: |
+          if [ -z "$DB_URL" ]; then echo "SUPABASE_DB_URL_PROD not set — skipping"; exit 0; fi
+          supabase db dump --db-url "$DB_URL" -f roles.sql --role-only
+          supabase db dump --db-url "$DB_URL" -f schema.sql
+          supabase db dump --db-url "$DB_URL" -f data.sql --data-only --use-copy
+      - name: Encrypt
+        if: ${{ hashFiles('data.sql') != '' }}
+        env:
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          tar cf backup.tar roles.sql schema.sql data.sql
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$PASS" --symmetric --cipher-algo AES256 -o backup.tar.gpg backup.tar
+          rm -f backup.tar roles.sql schema.sql data.sql
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('backup.tar.gpg') != '' }}
+        with:
+          name: pulse-prod-backup-${{ github.run_id }}
+          path: backup.tar.gpg
+          retention-days: 30

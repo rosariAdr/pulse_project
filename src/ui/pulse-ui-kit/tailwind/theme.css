@@ -1,0 +1,91 @@
+/* ==========================================================================
+   Pulse UI kit — Tailwind CSS v4 bridge
+   --------------------------------------------------------------------------
+   Holds no values of its own: every entry points at a --pl-* custom property
+   from tokens/tokens.css, so switching <html data-theme> re-themes Tailwind
+   utilities too (that is what `@theme inline` is for).
+
+   src/index.css:
+     @import "tailwindcss";
+     @import "../pulse-ui-kit/tokens/tokens.css";
+     @import "../pulse-ui-kit/styles/ground.css";
+     @import "../pulse-ui-kit/styles/components.css";
+     @import "../pulse-ui-kit/tailwind/theme.css";
+
+   Then e.g. `bg-surface text-ink border-edge rounded-card shadow-tier-2
+   duration-pulse ease-pulse font-serif`.
+   Prefer the pl-* component classes for anything that moves (buttons, cards,
+   choices): the gesture is already wired there. Use utilities for layout.
+   ========================================================================== */
+
+@theme inline {
+  /* Brand */
+  --color-navy: var(--pl-navy);
+  --color-navy-2: var(--pl-navy-2);
+  --color-deep: var(--pl-deep);
+  --color-gold: var(--pl-gold);
+  --color-gold-hover: var(--pl-gold-hover);
+  --color-sage: var(--pl-sage);
+  --color-risk: var(--pl-risk);
+  --color-ai: var(--pl-ai);
+  --color-paper: var(--pl-paper);
+  --color-page: var(--pl-page);
+  --color-line: var(--pl-line);
+
+  /* Semantic (theme-aware) */
+  --color-ink: var(--pl-ink);
+  --color-ink-muted: var(--pl-ink-muted);
+  --color-surface: var(--pl-surface);
+  --color-surface-ink: var(--pl-surface-ink);
+  --color-surface-muted: var(--pl-surface-muted);
+  --color-edge: var(--pl-surface-edge);
+  --color-edge-hover: var(--pl-surface-edge-hover);
+  --color-well: var(--pl-well);
+  --color-chrome: var(--pl-chrome);
+  --color-rail: var(--pl-rail);
+  --color-panel: var(--pl-panel);
+  --color-ring: var(--pl-ring);
+  --color-ai-ink: var(--pl-ai-ink);
+
+  /* Type */
+  --font-serif: var(--pl-font-serif);
+  --font-sans: var(--pl-font-sans);
+  --font-mono: var(--pl-font-mono);
+  --text-display: var(--pl-text-display);
+  --text-h2: var(--pl-text-h2);
+  --text-h3: var(--pl-text-h3);
+  --text-title: var(--pl-text-title);
+  --text-body: var(--pl-text-body);
+  --text-sm: var(--pl-text-sm);
+  --text-xs: var(--pl-text-xs);
+  --text-eyebrow: var(--pl-text-eyebrow);
+
+  /* Radius */
+  --radius-chip: var(--pl-r-xs);
+  --radius-control: var(--pl-r-sm);
+  --radius-tile: var(--pl-r-md);
+  --radius-card: var(--pl-r-lg);
+  --radius-panel: var(--pl-r-xl);
+
+  /* Elevation */
+  --shadow-tier-1: var(--pl-sh-1);
+  --shadow-tier-2: var(--pl-sh-2);
+  --shadow-tier-3: var(--pl-sh-3);
+  --shadow-glow-ai: var(--pl-glow-ai);
+
+  /* Motion */
+  --ease-pulse: var(--pl-ease);
+  --default-transition-duration: var(--pl-dur);
+  --default-transition-timing-function: var(--pl-ease);
+}
+
+/* `duration-pulse` utility (Tailwind v4 has no duration namespace in @theme). */
+@utility duration-pulse {
+  transition-duration: var(--pl-dur);
+}
+/* `lift-on-hover`: the gesture for one-off elements that aren't pl-* components. */
+@utility lift-on-hover {
+  transition: transform var(--pl-dur) var(--pl-ease), box-shadow var(--pl-dur) var(--pl-ease);
+  &:hover { transform: translateY(calc(var(--pl-lift) * -1)); box-shadow: var(--pl-sh-3); }
+  &:active { transform: translateY(0); box-shadow: var(--pl-sh-1); }
+}

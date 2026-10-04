@@ -30,3 +30,7 @@ dist-ssr
 
 # Vercel
 .vercel
+
+# Supabase CLI local state
+supabase/.temp
+supabase/.branches
