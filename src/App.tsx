@@ -43,17 +43,16 @@ function App() {
       <Panel>
         <StatusPill tone="neutral">{en.common.demoData}</StatusPill>
         <h1 className="font-serif text-display">Pulse</h1>
-        <p className="text-ink-muted max-w-xl">
+        <p className="max-w-xl">
           The entrance-test loop comes next: the door, a test per module, and the
           teacher&apos;s raw results.
         </p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <Tile k="Theme" v={theme === 'dark' ? 'Dark' : 'Light'} meta="hybrid / dark" />
+          <Tile k="Database" v="v10" unit="schema" meta="36 RLS assertions" />
+          <Tile k="Journeys approved" v="0" unit="/ 3" meta="see /design" />
+        </div>
       </Panel>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <Tile k="Theme" v={theme === 'dark' ? 'Dark' : 'Light'} meta="hybrid / dark" />
-        <Tile k="Database" v="v10" unit="schema" meta="36 RLS assertions" />
-        <Tile k="Journeys approved" v="0" unit="/ 3" meta="see /design" />
-      </div>
 
       <Card className="mt-6">
         <h2 className="font-serif text-h3">
