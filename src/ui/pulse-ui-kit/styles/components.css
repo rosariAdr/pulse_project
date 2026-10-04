@@ -1,0 +1,399 @@
+/* ==========================================================================
+   Pulse UI kit — components
+   --------------------------------------------------------------------------
+   Every value is a var() from tokens.css. Load order:
+     tokens/tokens.css → styles/ground.css → styles/components.css
+   Class prefix `pl-` keeps these clear of Tailwind utilities.
+
+   THE ONE GESTURE (see MOTION.md)
+     hover   → rise var(--pl-lift) (3px) and shadow tier 1 → 3
+     press   → back to rest, shadow tier 1
+     ghost   → no surface until hover, then fill + edge + shadow fade in
+     cards   → same rise; edge strengthens; a sheen follows the pointer
+     inputs  → recessed well; on focus it rises level with the page
+   All timing: var(--pl-dur) 220ms, var(--pl-ease) cubic-bezier(.2,.6,.2,1).
+   ========================================================================== */
+
+/* ---------------------------------------------------------------- type */
+.pl-serif { font-family: var(--pl-font-serif); }
+.pl-display { margin: 0; font-family: var(--pl-font-serif); font-size: var(--pl-text-display); font-weight: 600; line-height: 1.12; letter-spacing: -0.01em; }
+.pl-h2 { margin: 0; font-family: var(--pl-font-serif); font-size: var(--pl-text-h2); font-weight: 600; line-height: 1.25; }
+.pl-h3 { margin: 0; font-family: var(--pl-font-serif); font-size: var(--pl-text-h3); font-weight: 600; line-height: 1.25; }
+.pl-eyebrow { font-size: var(--pl-text-eyebrow); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pl-ink-muted); }
+.pl-muted { color: var(--pl-ink-muted); }
+.pl-sm { font-size: var(--pl-text-sm); }
+.pl-xs { font-size: var(--pl-text-xs); }
+
+/* --------------------------------------------------------------- shell */
+.pl-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 100dvh;
+}
+@media (min-width: 1024px) {
+  .pl-shell { grid-template-columns: 248px minmax(0, 1fr); }
+}
+
+.pl-main { position: relative; min-width: 0; display: flex; flex-direction: column; }
+.pl-content {
+  flex: 1;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1280px;
+  padding: var(--pl-space-5) var(--pl-space-4) var(--pl-space-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pl-space-5);
+}
+@media (min-width: 768px) {
+  .pl-content { padding: var(--pl-space-6) var(--pl-space-8) var(--pl-space-12); }
+}
+
+/* --------------------------------------------------------------- rail */
+.pl-rail {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 40;
+  width: 280px;
+  max-width: 86vw;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--pl-rail);
+  -webkit-backdrop-filter: var(--pl-rail-blur);
+  backdrop-filter: var(--pl-rail-blur);
+  border-right: 1px solid var(--pl-rail-edge);
+  color: var(--pl-lt-ink);
+  transform: translateX(-100%);
+  transition: transform var(--pl-dur) var(--pl-ease);
+}
+.pl-rail.is-open { transform: none; box-shadow: var(--pl-sh-3); }
+@media (min-width: 1024px) {
+  .pl-rail { position: sticky; top: 0; width: auto; max-width: none; height: 100dvh; transform: none; }
+  .pl-rail.is-open { box-shadow: none; }
+}
+.pl-rail-scrim {
+  position: fixed; inset: 0; z-index: 39;
+  background: rgba(17, 26, 51, 0.40);
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--pl-dur) var(--pl-ease);
+}
+.pl-rail.is-open + .pl-rail-scrim { opacity: 1; pointer-events: auto; }
+@media (min-width: 1024px) { .pl-rail-scrim { display: none; } }
+
+.pl-rail-in {
+  position: relative; z-index: 1;
+  height: 100%; box-sizing: border-box;
+  padding: 22px 16px 18px;
+  display: flex; flex-direction: column; gap: 18px;
+  overflow-y: auto;
+}
+.pl-brand { display: flex; align-items: center; gap: 10px; padding: 0 6px; color: var(--pl-lt-ink); text-decoration: none; }
+.pl-brand b { display: block; font-size: 21px; font-weight: 700; letter-spacing: -0.01em; line-height: 1; }
+.pl-brand small { display: block; margin-top: 4px; font-size: 11.5px; color: var(--pl-lt-muted); }
+
+.pl-nav { display: flex; flex-direction: column; gap: 4px; }
+.pl-nav-label { padding: 0 12px; margin: 2px 0; font-size: var(--pl-text-eyebrow); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pl-lt-muted); }
+.pl-nav-item {
+  position: relative;
+  display: flex; align-items: center; gap: 11px;
+  min-height: 44px; padding: 0 12px; box-sizing: border-box;
+  border-radius: var(--pl-r-sm);
+  border: 1px solid transparent;
+  color: var(--pl-lt-muted);
+  font-size: var(--pl-text-sm); font-weight: 500;
+  text-decoration: none;
+  transition: color var(--pl-dur) var(--pl-ease), background-color var(--pl-dur) var(--pl-ease), border-color var(--pl-dur) var(--pl-ease);
+}
+.pl-nav-item:hover { color: var(--pl-lt-ink); background: var(--pl-glass-1); border-color: var(--pl-edge-hair); }
+.pl-nav-item[aria-current="page"] { color: var(--pl-lt-ink); background: rgba(255, 255, 255, 0.08); border-color: var(--pl-edge-boundary); }
+.pl-nav-item[aria-current="page"]::before {
+  content: ""; position: absolute; left: -1px; top: 10px; bottom: 10px;
+  width: 3px; border-radius: 3px; background: var(--pl-gold);
+}
+.pl-nav-item:focus-visible { outline: 2px solid var(--pl-ring); outline-offset: 2px; }
+.pl-nav-item > svg { flex-shrink: 0; }
+.pl-nav-item > .pl-pill { margin-left: auto; }
+
+.pl-me { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 14px 4px 0; border-top: 1px solid rgba(255, 255, 255, 0.10); }
+
+/* ------------------------------------------------------------- top bar */
+.pl-topbar {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; gap: var(--pl-space-3);
+  min-height: 64px; padding: 0 var(--pl-space-4);
+  box-sizing: border-box;
+  background: var(--pl-chrome);
+  -webkit-backdrop-filter: var(--pl-chrome-blur);
+  backdrop-filter: var(--pl-chrome-blur);
+  border-bottom: 1px solid var(--pl-chrome-edge);
+  box-shadow: var(--pl-chrome-hl);
+}
+@media (min-width: 768px) { .pl-topbar { min-height: 72px; padding: 0 var(--pl-space-8); gap: 14px; } }
+.pl-btn.pl-topbar__menu { display: inline-flex; }
+@media (min-width: 1024px) { .pl-btn.pl-topbar__menu { display: none; } }
+.pl-crumb { flex: 1; min-width: 0; }
+.pl-crumb small { display: block; font-size: var(--pl-text-xs); color: var(--pl-ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-crumb b { display: block; margin-top: 2px; font-size: var(--pl-text-title); font-weight: 600; color: var(--pl-ink); }
+
+.pl-avatar {
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--pl-r-pill);
+  display: grid; place-items: center;
+  background: var(--pl-sage); color: var(--pl-white);
+  font-size: 12.5px; font-weight: 700;
+}
+
+/* ------------------------------------------------------------- buttons */
+.pl-btn {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 0 18px; box-sizing: border-box;
+  border-radius: var(--pl-r-sm);
+  border: 1px solid transparent;
+  font: inherit; font-size: var(--pl-text-sm); font-weight: 600; line-height: 1;
+  white-space: nowrap; text-decoration: none; cursor: pointer;
+  transition:
+    transform var(--pl-dur) var(--pl-ease),
+    box-shadow var(--pl-dur) var(--pl-ease),
+    background-color var(--pl-dur) var(--pl-ease),
+    border-color var(--pl-dur) var(--pl-ease),
+    color var(--pl-dur) var(--pl-ease);
+}
+.pl-btn:hover:not(:disabled):not([aria-disabled="true"]) { transform: translateY(calc(var(--pl-lift) * -1)); }
+.pl-btn:active:not(:disabled):not([aria-disabled="true"]) { transform: translateY(0); }
+.pl-btn:focus-visible { outline: 2px solid var(--pl-ring); outline-offset: 2px; }
+.pl-btn:disabled, .pl-btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; box-shadow: none; transform: none; }
+
+/* Primary: opaque gold. One per view — the single most important next step. */
+.pl-btn--primary { background: var(--pl-gold); color: var(--pl-gold-ink); border-color: var(--pl-gold); box-shadow: var(--pl-btn-hl), var(--pl-btn-sh); }
+.pl-btn--primary:hover:not(:disabled) { background: var(--pl-gold-hover); border-color: var(--pl-gold-hover); box-shadow: var(--pl-btn-hl), var(--pl-btn-sh-hover); }
+.pl-btn--primary:active:not(:disabled) { box-shadow: var(--pl-btn-hl), var(--pl-btn-sh-press); }
+
+/* Secondary: solid navy on light grounds, the glass button on dark ones. */
+.pl-btn--secondary { background: var(--pl-btn2-bg); color: var(--pl-btn2-ink); border-color: var(--pl-btn2-edge); box-shadow: var(--pl-btn2-hl), var(--pl-btn-sh); }
+.pl-btn--secondary:hover:not(:disabled) { background: var(--pl-btn2-bg-hover); box-shadow: var(--pl-btn2-hl), var(--pl-btn-sh-hover); }
+.pl-btn--secondary:active:not(:disabled) { box-shadow: var(--pl-btn2-hl), var(--pl-btn-sh-press); }
+
+/* Ghost: no surface at rest — the hover is how the reader learns it's a control. */
+.pl-btn--ghost { background: transparent; color: var(--pl-ghost-ink); border-color: transparent; box-shadow: none; }
+.pl-btn--ghost:hover:not(:disabled) { background: var(--pl-ghost-bg-hover); border-color: var(--pl-ghost-edge-hover); box-shadow: var(--pl-btn-sh-press); }
+
+/* Risk: reject / delete only. */
+.pl-btn--risk { background: var(--pl-risk); color: var(--pl-paper); border-color: var(--pl-risk); box-shadow: var(--pl-btn-hl), var(--pl-btn-sh); }
+.pl-btn--risk:hover:not(:disabled) { box-shadow: var(--pl-btn-hl), var(--pl-btn-sh-hover); }
+.pl-btn--risk:active:not(:disabled) { box-shadow: var(--pl-btn-hl), var(--pl-btn-sh-press); }
+
+.pl-btn--icon { width: 44px; padding: 0; }
+.pl-btn--lg { min-height: 52px; padding: 0 24px; font-size: 15px; border-radius: 12px; }
+.pl-btn--block { width: 100%; }
+.pl-btn .pl-arrow { transition: transform var(--pl-dur) var(--pl-ease); }
+.pl-btn:hover .pl-arrow { transform: translateX(3px); }
+
+/* --------------------------------------------------------------- cards */
+.pl-card {
+  position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: var(--pl-r-lg);
+  padding: var(--pl-space-4) 18px;
+  color: var(--pl-surface-ink);
+  background: var(--pl-surface);
+  -webkit-backdrop-filter: var(--pl-surface-blur);
+  backdrop-filter: var(--pl-surface-blur);
+  border: 1px solid var(--pl-surface-edge);
+  box-shadow: var(--pl-surface-hl), var(--pl-sh-2);
+}
+.pl-card .pl-muted, .pl-card .pl-eyebrow { color: var(--pl-surface-muted); }
+
+/* A card that is itself a link: the full gesture plus the pointer sheen.
+   The sheen reads --mx/--my, set by usePointerSheen (react) or sheen.js. */
+.pl-card--link {
+  display: block; text-decoration: none; cursor: pointer;
+  isolation: isolate;
+  transition: transform var(--pl-dur) var(--pl-ease), box-shadow var(--pl-dur) var(--pl-ease), border-color var(--pl-dur) var(--pl-ease);
+}
+.pl-card--link::after {
+  /* z-index -1 inside the card's own stacking context: over its fill, under its text */
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(380px circle at var(--mx, 50%) var(--my, 0%), var(--pl-sheen), transparent 65%);
+  opacity: 0;
+  transition: opacity var(--pl-dur) var(--pl-ease);
+}
+.pl-card--link:hover { transform: translateY(calc(var(--pl-lift) * -1)); border-color: var(--pl-surface-edge-hover); box-shadow: var(--pl-surface-hl), var(--pl-sh-3); }
+.pl-card--link:hover::after { opacity: 1; }
+.pl-card--link:active { transform: translateY(0); box-shadow: var(--pl-surface-hl), var(--pl-sh-1); }
+.pl-card--link:focus-visible { outline: 2px solid var(--pl-ring); outline-offset: 3px; }
+.pl-card--link:hover .pl-arrow { transform: translateX(3px); }
+.pl-arrow { flex-shrink: 0; transition: transform var(--pl-dur) var(--pl-ease); }
+
+/* Where the AI speaks: cyan edge + the screen's one glow. V2 only for Pulse
+   (no AI in V0/V1) — kept so the language exists when the companion arrives. */
+.pl-card--ai { border-color: var(--pl-ai-edge); box-shadow: var(--pl-surface-hl), var(--pl-sh-2), var(--pl-glow-ai); }
+
+/* A well sits below the plane: inner shadow, no catch-light, never lifts. */
+.pl-card--well {
+  background: var(--pl-well);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  border-color: var(--pl-well-edge);
+  box-shadow: var(--pl-well-shadow);
+}
+
+/* ------------------------------------------------------ hero / panel */
+.pl-panel {
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  border-radius: var(--pl-r-xl);
+  padding: 22px 20px;
+  color: var(--pl-lt-ink);
+  background: var(--pl-panel);
+  -webkit-backdrop-filter: var(--pl-panel-blur);
+  backdrop-filter: var(--pl-panel-blur);
+  border: 1px solid var(--pl-panel-edge);
+  box-shadow: var(--pl-panel-hl), var(--pl-panel-sh);
+}
+@media (min-width: 768px) { .pl-panel { padding: 22px 26px; } }
+.pl-panel > :not(.pl-ground--inner):not(.pl-beat) { position: relative; z-index: 1; }
+.pl-panel p { color: var(--pl-lt-muted); }
+
+.pl-tile {
+  box-sizing: border-box;
+  border-radius: var(--pl-r-md);
+  padding: 12px 16px;
+  background: var(--pl-tile);
+  border: 1px solid var(--pl-tile-edge);
+  box-shadow: var(--pl-tile-hl);
+}
+.pl-tile__k { font-size: var(--pl-text-eyebrow); font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--pl-lt-muted); }
+.pl-tile__v { margin-top: 3px; font-family: var(--pl-font-serif); font-size: 25px; font-weight: 600; line-height: 1.15; color: var(--pl-lt-ink); }
+.pl-tile__v small { font-size: 15px; font-weight: 500; color: var(--pl-lt-muted); }
+.pl-tile__m { margin-top: 2px; font-size: var(--pl-text-xs); color: var(--pl-lt-muted); }
+
+/* The heartbeat line — Pulse's mark, pulsing behind a live panel. */
+.pl-beat { position: absolute; left: 0; bottom: 0; z-index: 0; width: 100%; height: 44px; pointer-events: none; }  /* runs along the panel's lower edge */
+.pl-panel:has(> .pl-beat) { padding-bottom: 46px; }   /* keeps the line clear of buttons and tiles */
+.pl-beat__base { fill: none; stroke: rgba(201, 162, 39, 0.28); stroke-width: 2; }
+.pl-beat__run {
+  fill: none; stroke: var(--pl-gold); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 150 1850;
+  animation: pl-beat 3.4s linear infinite;
+}
+@keyframes pl-beat { from { stroke-dashoffset: 2000; } to { stroke-dashoffset: 0; } }
+
+/* -------------------------------------------------------------- fields */
+.pl-field { display: flex; flex-direction: column; gap: var(--pl-space-2); }
+.pl-label { font-size: var(--pl-text-eyebrow); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pl-ink-muted); }
+.pl-input {
+  width: 100%; min-height: 44px; box-sizing: border-box;
+  padding: 10px 14px;
+  font: inherit; font-size: 16px;          /* 16px stops iOS zooming on focus */
+  color: var(--pl-ink);
+  background: var(--pl-well);
+  border: 1px solid var(--pl-well-edge);
+  border-radius: var(--pl-r-sm);
+  box-shadow: var(--pl-well-shadow);
+  transition: background-color var(--pl-dur) var(--pl-ease), box-shadow var(--pl-dur) var(--pl-ease), border-color var(--pl-dur) var(--pl-ease);
+}
+@media (min-width: 768px) { .pl-input { font-size: var(--pl-text-sm); } }
+.pl-input::placeholder { color: var(--pl-ink-muted); opacity: 1; }
+/* Focus lifts the well to a level surface: the field being typed in is the
+   one sitting flush with the page. */
+.pl-input:focus { outline: 2px solid var(--pl-ring); outline-offset: 2px; background: var(--pl-well-focus); box-shadow: var(--pl-sh-1); }
+.pl-input[aria-invalid="true"] { border-color: var(--pl-risk); }
+.pl-input:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+textarea.pl-input { min-height: 120px; resize: vertical; line-height: 1.5; }
+.pl-hint { font-size: var(--pl-text-xs); color: var(--pl-ink-muted); }
+.pl-error { font-size: var(--pl-text-xs); font-weight: 600; color: var(--pl-risk); }
+
+/* Search: an input inside a well-shaped label. */
+.pl-search {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 44px; padding: 0 14px; box-sizing: border-box;
+  border-radius: var(--pl-r-sm);
+  background: var(--pl-well); border: 1px solid var(--pl-well-edge); box-shadow: var(--pl-well-shadow);
+  color: var(--pl-ink-muted);
+  transition: background-color var(--pl-dur) var(--pl-ease), box-shadow var(--pl-dur) var(--pl-ease);
+}
+.pl-search:focus-within { background: var(--pl-well-focus); box-shadow: var(--pl-sh-1); outline: 2px solid var(--pl-ring); outline-offset: 2px; }
+.pl-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--pl-ink); font: inherit; font-size: 16px; }
+@media (min-width: 768px) { .pl-search input { font-size: var(--pl-text-sm); } }
+.pl-search input::placeholder { color: var(--pl-ink-muted); opacity: 1; }
+
+/* Answer option (entrance test, exercises): a whole-row target wrapping a
+   real radio/checkbox. Same gesture as a card; the chosen one takes a gold
+   edge and a check — never colour alone. */
+.pl-choice {
+  position: relative;
+  display: flex; align-items: flex-start; gap: 12px;
+  min-height: 52px; padding: 14px 16px; box-sizing: border-box;
+  border-radius: var(--pl-r-md);
+  background: var(--pl-surface);
+  -webkit-backdrop-filter: var(--pl-surface-blur); backdrop-filter: var(--pl-surface-blur);
+  border: 1px solid var(--pl-surface-edge);
+  box-shadow: var(--pl-surface-hl), var(--pl-sh-1);
+  color: var(--pl-surface-ink);
+  font-size: 15px; line-height: 1.45;
+  cursor: pointer;
+  transition: transform var(--pl-dur) var(--pl-ease), box-shadow var(--pl-dur) var(--pl-ease), border-color var(--pl-dur) var(--pl-ease);
+}
+.pl-choice:hover { transform: translateY(calc(var(--pl-lift) * -1)); border-color: var(--pl-surface-edge-hover); box-shadow: var(--pl-surface-hl), var(--pl-sh-3); }
+.pl-choice input { flex-shrink: 0; width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--pl-gold); }
+.pl-choice:has(input:checked) { border-color: var(--pl-gold); box-shadow: var(--pl-surface-hl), 0 0 0 1px var(--pl-gold), var(--pl-sh-2); }
+.pl-choice:has(input:focus-visible) { outline: 2px solid var(--pl-ring); outline-offset: 2px; }
+
+/* ------------------------------------------------------- status pills */
+.pl-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 24px; padding: 0 10px; box-sizing: border-box;
+  border-radius: var(--pl-r-pill); border: 1px solid;
+  font-size: var(--pl-text-eyebrow); font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.pl-pill--neutral { background: var(--pl-pill-n-bg); color: var(--pl-pill-n-ink); border-color: var(--pl-pill-n-edge); }
+.pl-pill--gold    { background: var(--pl-pill-g-bg); color: var(--pl-pill-g-ink); border-color: var(--pl-pill-g-edge); }
+.pl-pill--sage    { background: var(--pl-pill-s-bg); color: var(--pl-pill-s-ink); border-color: var(--pl-pill-s-edge); }
+.pl-pill--risk    { background: var(--pl-pill-r-bg); color: var(--pl-pill-r-ink); border-color: var(--pl-pill-r-edge); }
+.pl-pill--ai      { background: var(--pl-pill-a-bg); color: var(--pl-pill-a-ink); border-color: var(--pl-pill-a-edge); }
+
+.pl-dot { position: relative; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pl-dot--live::after {
+  content: ""; position: absolute; inset: -1px; border-radius: 50%;
+  border: 2px solid currentColor;
+  animation: pl-ping 1.8s var(--pl-ease) infinite;
+}
+@keyframes pl-ping { from { transform: scale(1); opacity: 0.7; } to { transform: scale(2.6); opacity: 0; } }
+
+/* ------------------------------------------------------------ progress */
+.pl-progress { position: relative; height: 6px; border-radius: 6px; background: var(--pl-surface-line); }
+.pl-progress > i { position: absolute; inset: 0 auto 0 0; display: block; border-radius: 6px; background: var(--pl-sage); transition: width var(--pl-dur) var(--pl-ease); }
+.pl-progress > em { position: absolute; top: -3px; display: block; width: 2px; height: 12px; border-radius: 2px; background: var(--pl-gold); }
+
+/* ---------------------------------------------------------- list rows */
+.pl-row {
+  display: flex; align-items: center; gap: 14px;
+  margin: 0 -10px; padding: 10px; box-sizing: border-box;
+  border-radius: 12px;
+  border-top: 1px solid var(--pl-surface-line);
+  transition: background-color var(--pl-dur) var(--pl-ease), border-color var(--pl-dur) var(--pl-ease);
+}
+.pl-row:hover { background: var(--pl-row-hover); border-top-color: transparent; }
+.pl-row { flex-wrap: wrap; }
+.pl-row__body { flex: 1 1 160px; min-width: 0; }
+
+/* ----------------------------------------------------- page-load rise */
+/* Backwards fill: the element starts lowered and transparent, ends at rest,
+   then hands control back so hover transforms still work. Set --i per block. */
+.pl-enter {
+  animation: pl-rise var(--pl-enter-dur) var(--pl-ease) backwards;
+  animation-delay: calc(var(--i, 0) * var(--pl-enter-step));
+}
+@keyframes pl-rise { from { opacity: 0; transform: translateY(var(--pl-enter-rise)); } }
+
+/* ------------------------------------------------------------ helpers */
+.pl-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pl-beat__run, .pl-dot--live::after, .pl-enter { animation: none !important; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .pl-card, .pl-panel, .pl-topbar, .pl-rail, .pl-tile, .pl-choice { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+}

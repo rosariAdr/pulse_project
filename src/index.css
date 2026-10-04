@@ -1,20 +1,17 @@
 @import 'tailwindcss';
 
-/* Locked Pulse palette (Second Brain → Build Plan, 30 Aug 2026).
-   Type pair still to confirm from website-DESIGN.md. */
-@theme {
-  --color-ink: #1b2a4a;
-  --color-gold: #c9a227;
-  --color-sage: #2f7d6b;
-  --color-paper: #f7f5f0;
-}
+/* Pulse — Glass design system (kit in src/ui/pulse-ui-kit).
+   Order matters: tokens → ground → components → Tailwind bridge.
+   Themes in use: `hybrid` = our light mode (default), `dark` = our dark mode
+   (decided 4 Oct 2026). The kit's `light` (C′) theme stays in tokens.css but
+   the app never selects it — see src/ui/pulse-ui-kit/react/theme.tsx. */
+@import './ui/pulse-ui-kit/tokens/tokens.css';
+@import './ui/pulse-ui-kit/styles/ground.css';
+@import './ui/pulse-ui-kit/styles/components.css';
+@import './ui/pulse-ui-kit/tailwind/theme.css';
 
 html,
 body,
 #root {
   min-height: 100%;
-}
-
-body {
-  @apply bg-paper text-ink antialiased;
 }

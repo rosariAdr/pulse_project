@@ -1,0 +1,87 @@
+/* ==========================================================================
+   Pulse UI kit — the ground
+   --------------------------------------------------------------------------
+   Glass is a material that shows what is behind it: on a flat fill a frosted
+   card is just a grey box. The ground is what the glass frosts —
+   a base colour, three soft light sources kept apart (gold, sage, AI cyan),
+   and a graph-paper grid. Requires tokens.css.
+
+   Markup (once per page, first child of the app root):
+     <div class="pl-ground" aria-hidden="true">
+       <i class="pl-orb pl-orb--gold"></i>
+       <i class="pl-orb pl-orb--sage"></i>
+       <i class="pl-orb pl-orb--ai"></i>
+       <i class="pl-grid"></i>
+     </div>
+
+   The sidebar and hero carry an optional inner ground (.pl-ground--inner)
+   that only shows in the hybrid theme, where the page itself has no ground.
+
+   THREE THINGS THAT SILENTLY KILL backdrop-filter
+     1. An ancestor with opacity < 1 or a `filter` — the blur stops at it.
+        (A transformed ancestor is fine.) Never fade a whole panel in with
+        opacity: animate its children, or use the .pl-enter rise, which runs
+        on the panel's own transform and ends at opacity 1.
+     2. Nothing behind it — hence this file.
+     3. Two backdrop-filters stacked — the upper one blurs the lower one's
+        result. One blur per stack: tiles inside a blurred panel don't blur.
+   ========================================================================== */
+
+.pl-app {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  background: var(--pl-bg);
+  color: var(--pl-ink);
+  font-family: var(--pl-font-sans);
+  font-size: var(--pl-text-body);
+  line-height: 1.45;
+}
+
+.pl-ground,
+.pl-ground--inner {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.pl-ground { position: fixed; opacity: var(--pl-ground-o); }
+.pl-ground--inner { opacity: var(--pl-inner-ground-o); }
+
+.pl-orb {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+}
+.pl-orb--gold { background: radial-gradient(closest-side, var(--pl-orb-gold), transparent); }
+.pl-orb--sage { background: radial-gradient(closest-side, var(--pl-orb-sage), transparent); }
+.pl-orb--ai   { background: radial-gradient(closest-side, var(--pl-orb-ai), transparent); }
+
+/* Default placement for the page ground (viewport-relative, so it holds on
+   phones and wide screens alike). Inner grounds set their own sizes inline. */
+.pl-ground > .pl-orb--gold { width: 62vmax; height: 62vmax; right: -16vmax; top: -30vmax; }
+.pl-ground > .pl-orb--sage { width: 70vmax; height: 70vmax; left: -24vmax; bottom: -30vmax; }
+.pl-ground > .pl-orb--ai   { width: 56vmax; height: 56vmax; right: -10vmax; bottom: -26vmax; }
+
+.pl-grid {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background-image:
+    linear-gradient(var(--pl-grid-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--pl-grid-major) 1px, transparent 1px),
+    linear-gradient(var(--pl-grid-minor) 1px, transparent 1px),
+    linear-gradient(90deg, var(--pl-grid-minor) 1px, transparent 1px);
+  background-size: 176px 176px, 176px 176px, 44px 44px, 44px 44px;
+}
+
+/* Everything that is not the ground sits above it. :where() keeps this at the
+   lowest specificity, so a component that needs `position: sticky` (rail,
+   top bar) still wins — load components.css after this file. */
+.pl-app > :where(:not(.pl-ground)) { position: relative; z-index: 1; }
+
+@media (prefers-reduced-transparency: reduce) {
+  .pl-orb { display: none; }
+}

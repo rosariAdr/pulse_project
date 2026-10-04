@@ -1,0 +1,38 @@
+# Every pull request: lint + TypeScript + build, and the database rules (pgTAP).
+# Board tasks: "GitHub Action: lint + TypeScript + build on every PR"
+#            + "Automated tests of the RLS rules (SQL)".
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      # Postgres + auth only: the tests insert into auth.users and read auth.uid().
+      # Applying migrations/ and seed.sql is part of the start.
+      - run: supabase start -x studio,imgproxy,inbucket,realtime,storage-api,edge-runtime,logflare,vector,supavisor,mailpit
+      # Runs supabase/tests/*.sql with pgTAP — must stay 100% green.
+      - run: supabase test db
+      - if: failure()
+        run: supabase status || true

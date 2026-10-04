@@ -1,0 +1,373 @@
+/* ==========================================================================
+   Pulse UI kit — tokens
+   --------------------------------------------------------------------------
+   Single source of truth. Every colour, shadow, radius, timing and blur the
+   components use lives here once; components.css and ground.css only read
+   these custom properties, and tailwind/theme.css only points at them.
+
+   THEMES (set on <html data-theme="…">)
+     light   C′ — frosted white glass over a navy graph-paper grid on warm white.
+             The chosen default (Adrian + Parv, 26 Sep 2026).
+     hybrid  B — paper reading surfaces, glass only in the sidebar and hero,
+             which carry their own lit-navy ground.
+     dark    C — glass everywhere over a lit navy ground. Future dark mode.
+   No data-theme → light. `prefers-color-scheme: dark` does NOT switch theme
+   automatically yet: dark is opt-in until it has been tested on real screens.
+
+   CONTRAST
+   Glass is translucent, so every text ratio below is measured against the
+   worst pixel the ground can produce under it, not against a screenshot:
+   light ink on dark glass ≥ 4.9:1, muted light ink ≥ 4.3:1 (used ≥ 12.5px
+   medium), navy ink on frosted white ≥ 12:1, muted ink #5F6878 ≥ 4.5:1 on
+   every light ground. Coloured text never sits directly on glass — status
+   pills use a deep fill at 62 % (dark) or a soft tint (light).
+
+   Motion and depth language adapted from rampstackco/glassmorphism-theme
+   (MIT): one gesture — a surface rises toward the reader on hover while its
+   shadow grows one tier; pressing puts it back down.
+   ========================================================================== */
+
+:root {
+  /* ---- Brand constants (never change with theme) ---------------------- */
+  --pl-navy: #1b2a4a;
+  --pl-navy-2: #24385f;
+  --pl-deep: #111a33;
+  --pl-gold: #c9a227;
+  --pl-gold-hover: #b8931f;
+  --pl-gold-ink: #1b2a4a;        /* text on gold: 5.9:1 */
+  --pl-sage: #2f7d6b;
+  --pl-risk: #a74b48;
+  --pl-ai: #7ddbe8;              /* the AI accent — only where the AI speaks */
+  --pl-paper: #fffefa;
+  --pl-page: #f7f5f0;
+  --pl-white: #ffffff;
+  --pl-line: #e5e2da;
+  --pl-line-2: #d8d4c8;
+
+  /* Light-on-dark inks, used in the sidebar/hero of every theme */
+  --pl-lt-ink: #f3f1ea;
+  --pl-lt-muted: #dde3ee;
+
+  /* ---- Type ----------------------------------------------------------- */
+  --pl-font-serif: "Source Serif 4", Georgia, serif;
+  --pl-font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --pl-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --pl-text-display: 30px;   /* hero heading, serif 600, line-height 1.12 */
+  --pl-text-h2: 20px;        /* section heading, serif 600 */
+  --pl-text-h3: 18px;        /* card title, serif 600, line-height 1.25 */
+  --pl-text-title: 17px;     /* top-bar page title, sans 600 */
+  --pl-text-body: 14px;      /* base; inputs go to 16px on touch screens */
+  --pl-text-sm: 13.5px;      /* secondary copy, buttons, table cells */
+  --pl-text-xs: 12.5px;      /* meta, helper text */
+  --pl-text-eyebrow: 10.5px; /* uppercase micro-labels, tracking .09–.1em */
+
+  /* ---- Space ---------------------------------------------------------- */
+  --pl-space-1: 4px;
+  --pl-space-2: 8px;
+  --pl-space-3: 12px;
+  --pl-space-4: 16px;
+  --pl-space-5: 20px;
+  --pl-space-6: 24px;
+  --pl-space-8: 32px;
+  --pl-space-9: 36px;
+  --pl-space-12: 48px;
+
+  /* ---- Radius --------------------------------------------------------- */
+  --pl-r-xs: 8px;     /* small chips */
+  --pl-r-sm: 10px;    /* buttons, inputs, nav items */
+  --pl-r-md: 14px;    /* tiles inside a panel, chat bubbles */
+  --pl-r-lg: 16px;    /* cards */
+  --pl-r-xl: 20px;    /* hero / context panels */
+  --pl-r-pill: 999px; /* status pills, avatars */
+
+  /* ---- Motion: the one gesture ----------------------------------------- */
+  --pl-lift: 3px;
+  --pl-dur: 220ms;
+  --pl-ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+  --pl-enter-dur: 600ms;   /* staggered page-load rise */
+  --pl-enter-step: 80ms;
+  --pl-enter-rise: 10px;
+
+  /* ---- Shadow geometry: offset ≈ a third of the blur, growing together - */
+  --pl-sh-light-1: 0 2px 8px rgba(24, 36, 60, 0.08);
+  --pl-sh-light-2: 0 12px 32px rgba(24, 36, 60, 0.10);
+  --pl-sh-light-3: 0 24px 64px rgba(24, 36, 60, 0.18);
+  --pl-sh-dark-1: 0 2px 8px rgba(3, 6, 16, 0.28);
+  --pl-sh-dark-2: 0 12px 32px rgba(3, 6, 16, 0.40);
+  --pl-sh-dark-3: 0 24px 64px rgba(3, 6, 16, 0.52);
+  --pl-glow-ai: 0 0 44px rgba(125, 219, 232, 0.26); /* one per screen */
+
+  /* ---- Glass tiers (dark grounds) -------------------------------------- */
+  --pl-glass-1: rgba(255, 255, 255, 0.06);
+  --pl-glass-2: rgba(255, 255, 255, 0.10);
+  --pl-glass-3: rgba(255, 255, 255, 0.14);
+  --pl-blur-1: blur(12px) saturate(1.6);
+  --pl-blur-2: blur(20px) saturate(1.6);
+  --pl-blur-3: blur(32px) saturate(1.6);
+  --pl-edge-hair: rgba(255, 255, 255, 0.16);
+  --pl-edge-boundary: rgba(255, 255, 255, 0.30);
+  --pl-edge-strong: rgba(255, 255, 255, 0.60);
+  --pl-catchlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.55);
+}
+
+/* ==========================================================================
+   THEME: light (C′) — the default
+   ========================================================================== */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Ground */
+  --pl-bg: var(--pl-page);
+  --pl-ground-o: 1;                       /* full-page ground visible */
+  --pl-inner-ground-o: 0;                 /* sidebar/hero see the page ground instead */
+  --pl-orb-gold: rgba(201, 162, 39, 0.10);
+  --pl-orb-sage: rgba(47, 125, 107, 0.08);
+  --pl-orb-ai: rgba(125, 219, 232, 0.16);
+  --pl-grid-minor: rgba(27, 42, 74, 0.045); /* 44px */
+  --pl-grid-major: rgba(27, 42, 74, 0.08);  /* every 176px */
+
+  /* Page ink */
+  --pl-ink: #18243c;
+  --pl-ink-muted: #5f6878;
+  --pl-ring: #0b6474;                     /* AI-cyan family, 6:1 on light grounds */
+
+  /* Cards: frosted white */
+  --pl-surface: rgba(255, 255, 255, 0.52);
+  --pl-surface-blur: blur(16px) saturate(1.5);
+  --pl-surface-edge: rgba(255, 255, 255, 0.95);
+  --pl-surface-edge-hover: rgba(27, 42, 74, 0.30);
+  --pl-surface-hl: inset 0 1px 0 0 #ffffff;
+  --pl-surface-ink: #18243c;
+  --pl-surface-muted: #5f6878;
+  --pl-surface-line: rgba(27, 42, 74, 0.10);
+  --pl-row-hover: rgba(255, 255, 255, 0.60);
+  --pl-sheen: rgba(201, 162, 39, 0.14);    /* a warm light following the pointer */
+
+  /* Elevation */
+  --pl-sh-1: var(--pl-sh-light-1);
+  --pl-sh-2: var(--pl-sh-light-2);
+  --pl-sh-3: var(--pl-sh-light-3);
+
+  /* Wells (inputs, recessed areas) */
+  --pl-well: rgba(255, 255, 255, 0.50);
+  --pl-well-edge: rgba(27, 42, 74, 0.18);
+  --pl-well-shadow: inset 0 2px 6px rgba(24, 36, 60, 0.07);
+  --pl-well-focus: var(--pl-paper);
+
+  /* Top bar */
+  --pl-chrome: rgba(255, 255, 255, 0.55);
+  --pl-chrome-blur: blur(20px) saturate(1.5);
+  --pl-chrome-edge: rgba(255, 255, 255, 0.95);
+  --pl-chrome-hl: inset 0 1px 0 0 #ffffff;
+
+  /* Sidebar (rail) and hero (panel): smoked navy over the grid */
+  --pl-rail: rgba(27, 42, 74, 0.86);
+  --pl-rail-blur: blur(20px) saturate(1.4);
+  --pl-rail-edge: rgba(27, 42, 74, 0.30);
+  --pl-panel: rgba(27, 42, 74, 0.84);
+  --pl-panel-blur: blur(24px) saturate(1.4);
+  --pl-panel-edge: rgba(255, 255, 255, 0.22);
+  --pl-panel-hl: inset 0 1px 0 0 rgba(255, 255, 255, 0.30);
+  --pl-panel-sh: var(--pl-sh-light-3);
+  --pl-tile: rgba(255, 255, 255, 0.06);   /* no blur: one backdrop-filter per stack */
+  --pl-tile-edge: rgba(255, 255, 255, 0.22);
+  --pl-tile-hl: inset 0 1px 0 0 rgba(255, 255, 255, 0.30);
+
+  /* Buttons */
+  --pl-btn-sh: var(--pl-sh-1);
+  --pl-btn-sh-hover: var(--pl-sh-3);
+  --pl-btn-sh-press: var(--pl-sh-1);
+  --pl-btn-hl: inset 0 1px 0 0 rgba(255, 255, 255, 0.35);
+  --pl-btn2-bg: var(--pl-navy);
+  --pl-btn2-bg-hover: var(--pl-navy-2);
+  --pl-btn2-ink: var(--pl-page);
+  --pl-btn2-edge: var(--pl-navy);
+  --pl-btn2-hl: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  --pl-ghost-ink: var(--pl-navy);
+  --pl-ghost-bg-hover: rgba(27, 42, 74, 0.05);
+  --pl-ghost-edge-hover: var(--pl-line-2);
+
+  /* AI moments */
+  --pl-ai-ink: #0b6474;                  /* AI text on light grounds: 6.2:1 */
+  --pl-ai-soft: rgba(125, 219, 232, 0.16);
+  --pl-ai-edge: rgba(11, 100, 116, 0.26);
+
+  /* Status pills — colour plus a word, never colour alone */
+  --pl-pill-n-bg: var(--pl-paper);                --pl-pill-n-ink: #5f6878; --pl-pill-n-edge: var(--pl-line);
+  --pl-pill-g-bg: rgba(201, 162, 39, 0.12);       --pl-pill-g-ink: var(--pl-gold-ink); --pl-pill-g-edge: rgba(201, 162, 39, 0.36);
+  --pl-pill-s-bg: rgba(47, 125, 107, 0.09);       --pl-pill-s-ink: #245c50; --pl-pill-s-edge: rgba(47, 125, 107, 0.26);
+  --pl-pill-r-bg: rgba(167, 75, 72, 0.08);        --pl-pill-r-ink: #7a3330; --pl-pill-r-edge: rgba(167, 75, 72, 0.26);
+  --pl-pill-a-bg: rgba(125, 219, 232, 0.18);      --pl-pill-a-ink: #0b6474; --pl-pill-a-edge: rgba(11, 100, 116, 0.28);
+}
+
+/* ==========================================================================
+   THEME: hybrid (B) — paper reading areas, lit navy chrome
+   ========================================================================== */
+[data-theme="hybrid"] {
+  --pl-ground-o: 0;
+  --pl-inner-ground-o: 1;                 /* sidebar + hero carry their own glows */
+  --pl-orb-gold: rgba(201, 162, 39, 0.12);
+  --pl-orb-sage: rgba(47, 125, 107, 0.20);
+  --pl-orb-ai: rgba(125, 219, 232, 0.16);
+  --pl-grid-minor: rgba(255, 255, 255, 0.045);
+  --pl-grid-major: transparent;
+
+  --pl-surface: var(--pl-paper);
+  --pl-surface-blur: none;
+  --pl-surface-edge: var(--pl-line);
+  --pl-surface-edge-hover: rgba(27, 42, 74, 0.28);
+  --pl-surface-hl: inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+  --pl-surface-line: var(--pl-line);
+  --pl-row-hover: rgba(27, 42, 74, 0.04);
+  --pl-sheen: rgba(201, 162, 39, 0.16);
+
+  --pl-well: var(--pl-page);
+  --pl-well-edge: var(--pl-line-2);
+
+  --pl-chrome: rgba(247, 245, 240, 0.78);
+  --pl-chrome-blur: blur(20px) saturate(1.4);
+  --pl-chrome-edge: var(--pl-line);
+  --pl-chrome-hl: inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+
+  --pl-rail: var(--pl-deep);
+  --pl-rail-blur: none;
+  --pl-rail-edge: rgba(255, 255, 255, 0.08);
+  --pl-panel: var(--pl-deep);
+  --pl-panel-blur: none;
+  --pl-panel-edge: rgba(255, 255, 255, 0.06);
+  --pl-panel-hl: 0 0 0 0 transparent;
+  --pl-panel-sh: var(--pl-sh-light-2);
+  --pl-tile: rgba(255, 255, 255, 0.08);   /* real glass: the panel itself is opaque */
+  --pl-tile-edge: rgba(255, 255, 255, 0.30);
+  --pl-tile-hl: inset 0 1px 0 0 rgba(255, 255, 255, 0.45);
+}
+/* Hybrid tiles may blur because their panel has no backdrop-filter. */
+[data-theme="hybrid"] .pl-tile {
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  backdrop-filter: blur(20px) saturate(1.5);
+}
+
+/* ==========================================================================
+   THEME: dark (C) — glass everywhere over lit navy. Future dark mode.
+   ========================================================================== */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --pl-bg: var(--pl-deep);
+  --pl-ground-o: 1;
+  --pl-inner-ground-o: 0;
+  --pl-orb-gold: rgba(201, 162, 39, 0.12);  /* capped so light ink stays ≥ 4.9:1 */
+  --pl-orb-sage: rgba(47, 125, 107, 0.20);
+  --pl-orb-ai: rgba(125, 219, 232, 0.16);
+  --pl-grid-minor: rgba(255, 255, 255, 0.045);
+  --pl-grid-major: transparent;
+
+  --pl-surface: var(--pl-glass-2);
+  --pl-surface-blur: var(--pl-blur-2);
+  --pl-surface-edge: var(--pl-edge-boundary);
+  --pl-surface-edge-hover: var(--pl-edge-strong);
+  --pl-surface-hl: var(--pl-catchlight);
+  --pl-surface-ink: var(--pl-lt-ink);
+  --pl-surface-muted: var(--pl-lt-muted);
+  --pl-surface-line: rgba(255, 255, 255, 0.12);
+  --pl-row-hover: rgba(255, 255, 255, 0.05);
+  --pl-sheen: rgba(255, 255, 255, 0.12);
+
+  --pl-sh-1: var(--pl-sh-dark-1);
+  --pl-sh-2: var(--pl-sh-dark-2);
+  --pl-sh-3: var(--pl-sh-dark-3);
+
+  --pl-well: var(--pl-glass-1);
+  --pl-well-edge: var(--pl-edge-strong);
+  --pl-well-shadow: inset 0 2px 8px rgba(3, 6, 16, 0.28);
+  --pl-well-focus: var(--pl-glass-2);
+
+  --pl-chrome: rgba(17, 26, 51, 0.72);   /* scrim: content scrolls under it */
+  --pl-chrome-blur: var(--pl-blur-2);
+  --pl-chrome-edge: var(--pl-edge-hair);
+  --pl-chrome-hl: inset 0 1px 0 0 rgba(255, 255, 255, 0.30);
+
+  --pl-rail: rgba(255, 255, 255, 0.04);
+  --pl-rail-blur: var(--pl-blur-1);
+  --pl-rail-edge: var(--pl-edge-hair);
+  --pl-panel: rgba(255, 255, 255, 0.07);
+  --pl-panel-blur: var(--pl-blur-2);
+  --pl-panel-edge: rgba(255, 255, 255, 0.34);
+  --pl-panel-hl: inset 0 1px 0 0 rgba(255, 255, 255, 0.60);
+  --pl-panel-sh: var(--pl-sh-dark-2);
+  --pl-tile: rgba(255, 255, 255, 0.03);
+  --pl-tile-edge: rgba(255, 255, 255, 0.22);
+  --pl-tile-hl: 0 0 0 0 transparent;
+
+  --pl-ai-soft: rgba(125, 219, 232, 0.12);
+  --pl-ai-edge: rgba(158, 234, 245, 0.45);
+}
+
+/* ==========================================================================
+   ON-DARK CONTEXT — the sidebar and hero in every theme, and all of dark.
+   Swaps inks, buttons and pills to their light-on-dark forms.
+   ========================================================================== */
+[data-theme="dark"],
+.pl-on-dark,
+.pl-rail,
+.pl-panel {
+  --pl-ink: var(--pl-lt-ink);
+  --pl-ink-muted: var(--pl-lt-muted);
+  --pl-ring: #9eeaf5;
+
+  --pl-btn-sh: var(--pl-sh-dark-1);
+  --pl-btn-sh-hover: var(--pl-sh-dark-3);
+  --pl-btn-sh-press: var(--pl-sh-dark-1);
+  --pl-btn2-bg: var(--pl-glass-2);       /* the glass button */
+  --pl-btn2-bg-hover: var(--pl-glass-3);
+  --pl-btn2-ink: var(--pl-lt-ink);
+  --pl-btn2-edge: var(--pl-edge-strong);
+  --pl-btn2-hl: inset 0 1px 0 0 rgba(255, 255, 255, 0.68);
+  --pl-ghost-ink: var(--pl-lt-ink);
+  --pl-ghost-bg-hover: var(--pl-glass-1);
+  --pl-ghost-edge-hover: rgba(255, 255, 255, 0.34);
+
+  --pl-ai-ink: #9eeaf5;
+
+  --pl-pill-n-bg: rgba(26, 34, 56, 0.62);  --pl-pill-n-ink: #dfe4ef; --pl-pill-n-edge: rgba(255, 255, 255, 0.16);
+  --pl-pill-g-bg: rgba(58, 44, 5, 0.62);   --pl-pill-g-ink: #f2cf6a; --pl-pill-g-edge: rgba(242, 207, 106, 0.30);
+  --pl-pill-s-bg: rgba(10, 58, 46, 0.62);  --pl-pill-s-ink: #8fe8c6; --pl-pill-s-edge: rgba(143, 232, 198, 0.28);
+  --pl-pill-r-bg: rgba(61, 15, 20, 0.62);  --pl-pill-r-ink: #ffa3ae; --pl-pill-r-edge: rgba(255, 163, 174, 0.28);
+  --pl-pill-a-bg: rgba(10, 52, 64, 0.62);  --pl-pill-a-ink: #9eeaf5; --pl-pill-a-edge: rgba(158, 234, 245, 0.34);
+}
+
+/* ==========================================================================
+   PREFERENCES
+   ========================================================================== */
+
+/* The rise is the only travel the kit ships; reduced motion removes it and
+   the load animation, and keeps the shadow change so hover still reads. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --pl-lift: 0px; --pl-dur: 1ms; --pl-enter-dur: 1ms; --pl-enter-rise: 0px; }
+}
+
+/* Readers who asked for less transparency get the same hierarchy on solid
+   surfaces: no blur, no glows, opaque fills that keep their relative order. */
+@media (prefers-reduced-transparency: reduce) {
+  :root, [data-theme="light"] {
+    --pl-surface: var(--pl-paper); --pl-chrome: var(--pl-paper);
+    --pl-rail: var(--pl-navy); --pl-panel: var(--pl-navy); --pl-well: var(--pl-paper);
+  }
+  [data-theme="hybrid"] { --pl-chrome: var(--pl-paper); }
+  [data-theme="dark"] {
+    --pl-surface: #1e2742; --pl-chrome: #141d36; --pl-rail: #151f3a; --pl-panel: #1a2440; --pl-well: #18213c;
+  }
+  :root { --pl-orb-gold: transparent; --pl-orb-sage: transparent; --pl-orb-ai: transparent; }
+}
+
+/* More contrast retires the glass rather than tuning it. */
+@media (prefers-contrast: more) {
+  :root, [data-theme="light"], [data-theme="hybrid"] {
+    --pl-surface: var(--pl-paper); --pl-surface-edge: var(--pl-navy); --pl-ink-muted: #3f4757;
+  }
+  [data-theme="dark"] {
+    --pl-surface: #131934; --pl-surface-edge: rgba(255, 255, 255, 0.86); --pl-ink-muted: var(--pl-lt-ink);
+  }
+}

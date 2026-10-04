@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pulse UI kit — demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="../styles/ground.css">
+<link rel="stylesheet" href="../styles/components.css">
+<style>
+  body { margin: 0; }
+  .demo-grid3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+  .demo-two { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  @media (min-width: 1100px) { .demo-two { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; } }
+  .demo-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .demo-hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: center; }
+  @media (min-width: 1100px) { .demo-hero { grid-template-columns: minmax(0, 1fr) 520px; } }
+    .demo-row-b b { display: block; font-size: 14px; }
+  .demo-row-b small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--pl-surface-muted); }
+  .demo-switch { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--pl-well); border: 1px solid var(--pl-well-edge); }
+  .demo-switch button { min-height: 36px; padding: 0 12px; }
+  .demo-phone { max-width: 390px; display: flex; flex-direction: column; gap: 12px; }
+  .demo-sec { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="pl-app">
+  <div class="pl-ground" aria-hidden="true"><i class="pl-orb pl-orb--gold"></i><i class="pl-orb pl-orb--sage"></i><i class="pl-orb pl-orb--ai"></i><i class="pl-grid"></i></div>
+
+  <div class="pl-shell">
+    <aside class="pl-rail" id="rail" aria-label="Main navigation">
+      <div class="pl-ground--inner" aria-hidden="true"><i class="pl-orb pl-orb--gold" style="width:420px;height:420px;left:-170px;top:-190px"></i><i class="pl-orb pl-orb--ai" style="width:460px;height:460px;left:-130px;top:580px"></i><i class="pl-grid"></i></div>
+      <div class="pl-rail-in">
+        <a class="pl-brand" href="#">
+          <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="15.5" fill="none" stroke="#c9a227" stroke-width="2"/><path d="M6.5 17h4l2.4-6 4.3 12.5 2.7-6.5h6.6" fill="none" stroke="#c9a227" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span><b>pulse</b><small>Learning, measured</small></span>
+        </a>
+        <nav class="pl-nav" aria-label="Workspace">
+          <div class="pl-nav-label">Master account</div>
+          <a class="pl-nav-item" href="#" aria-current="page"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V10l8-6 8 6v11M9 21v-6h6v6"/></svg>Home</a>
+          <a class="pl-nav-item" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14M2 5h8a2 2 0 0 1 2 2 2 2 0 0 1 2-2h8v13h-8a2 2 0 0 0-2 2 2 2 0 0 0-2-2H2z"/></svg>My modules</a>
+          <a class="pl-nav-item" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M10 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8"/></svg>Classes<span class="pl-pill pl-pill--gold">2 new</span></a>
+          <a class="pl-nav-item" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18M3 10h18M3 15h12M3 20h8"/></svg>Raw results</a>
+        </nav>
+        <div class="pl-me">
+          <span class="pl-avatar" aria-hidden="true">PK</span>
+          <span style="flex:1;min-width:0"><span style="display:block;font-size:13.5px;font-weight:600">Demo master account</span><span style="display:block;font-size:12px;color:var(--pl-lt-muted)">Seeded demo class</span></span>
+        </div>
+      </div>
+    </aside>
+    <div class="pl-rail-scrim" id="scrim" aria-hidden="true"></div>
+
+    <div class="pl-main">
+      <header class="pl-topbar">
+        <button class="pl-btn pl-btn--ghost pl-btn--icon pl-topbar__menu" id="menu" type="button" aria-label="Menu" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <div class="pl-crumb"><small>Demo data · fictional</small><b>Home</b></div>
+        <div class="demo-switch" role="group" aria-label="Theme">
+          <button class="pl-btn pl-btn--ghost" type="button" data-set-theme="light" aria-pressed="true">Light</button>
+          <button class="pl-btn pl-btn--ghost" type="button" data-set-theme="hybrid" aria-pressed="false">Hybrid</button>
+          <button class="pl-btn pl-btn--ghost" type="button" data-set-theme="dark" aria-pressed="false">Dark</button>
+        </div>
+      </header>
+
+      <main class="pl-content">
+        <section class="pl-panel pl-enter" style="--i:0" aria-labelledby="h-hero">
+          <div class="pl-ground--inner" aria-hidden="true"><i class="pl-orb pl-orb--gold" style="width:520px;height:520px;left:-160px;top:-300px"></i><i class="pl-orb pl-orb--sage" style="width:560px;height:560px;left:480px;top:60px"></i><i class="pl-orb pl-orb--ai" style="width:480px;height:480px;left:880px;top:-280px"></i><i class="pl-grid"></i></div>
+          <svg class="pl-beat" viewBox="0 0 1128 120" preserveAspectRatio="none" aria-hidden="true"><path class="pl-beat__base" d="M0 60H430L446 60L458 30L474 94L490 18L506 84L518 60H700L714 60L724 42L738 80L750 60H1128"/><path class="pl-beat__run" pathLength="2000" d="M0 60H430L446 60L458 30L474 94L490 18L506 84L518 60H700L714 60L724 42L738 80L750 60H1128"/></svg>
+          <div class="demo-hero">
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="pl-pill pl-pill--sage"><span class="pl-dot pl-dot--live" aria-hidden="true"></span>Test open</span><span class="pl-eyebrow" style="color:var(--pl-lt-muted)">Statistiques commerciales · B1 Groupe 2</span></div>
+              <h1 id="h-hero" class="pl-display" style="margin:10px 0 6px">The entrance test is running</h1>
+              <p style="margin:0;font-size:13.5px">Students hand in on their phones; answers land in your raw results as they arrive.</p>
+              <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap"><button class="pl-btn pl-btn--primary" type="button">Open raw results</button><button class="pl-btn pl-btn--secondary" type="button">Close the test</button><button class="pl-btn pl-btn--ghost" type="button">Preview as a student</button></div>
+            </div>
+            <div class="demo-tiles">
+              <div class="pl-tile"><div class="pl-tile__k">Profiles claimed</div><div class="pl-tile__v">24 <small>/ 28</small></div><div class="pl-tile__m">4 still to sign in</div></div>
+              <div class="pl-tile"><div class="pl-tile__k">Handed in</div><div class="pl-tile__v">19 <small>/ 24</small></div><div class="pl-tile__m">Median 14 min</div></div>
+              <div class="pl-tile"><div class="pl-tile__k">Questions</div><div class="pl-tile__v">16</div><div class="pl-tile__m">Version 1 · published</div></div>
+              <div class="pl-tile"><div class="pl-tile__k">Time box</div><div class="pl-tile__v">20 <small>min</small></div><div class="pl-tile__m">Unlocks the module</div></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="demo-sec pl-enter" style="--i:1"><h2 class="pl-h2">My modules</h2><a class="pl-btn pl-btn--ghost" href="#">All modules<svg class="pl-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></a></div>
+        <div class="demo-grid3">
+          <a class="pl-card pl-card--link pl-enter" style="--i:2" href="#" data-sheen>
+            <div style="display:flex;justify-content:space-between;align-items:center" class="pl-muted"><span class="pl-pill pl-pill--sage"><span class="pl-dot pl-dot--live" aria-hidden="true"></span>Test open</span><svg class="pl-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></div>
+            <h3 class="pl-h3" style="margin-top:10px">Statistiques commerciales</h3>
+            <div class="pl-muted pl-xs">B1 · Groupe 2 · 3 of 8 sessions prepared</div>
+            <div class="pl-progress" style="margin-top:14px" role="progressbar" aria-label="Sessions prepared" aria-valuenow="38" aria-valuemin="0" aria-valuemax="100"><i style="width:38%"></i></div>
+          </a>
+          <a class="pl-card pl-card--link pl-enter" style="--i:3" href="#" data-sheen>
+            <div style="display:flex;justify-content:space-between;align-items:center" class="pl-muted"><span class="pl-pill pl-pill--gold">Test in draft</span><svg class="pl-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></div>
+            <h3 class="pl-h3" style="margin-top:10px">Data-Driven Marketing</h3>
+            <div class="pl-muted pl-xs">M2-03 · 2 of 8 sessions prepared</div>
+            <div class="pl-progress" style="margin-top:14px" role="progressbar" aria-label="Sessions prepared" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"><i style="width:25%"></i></div>
+          </a>
+          <a class="pl-card pl-card--link pl-enter" style="--i:4" href="#" data-sheen>
+            <div style="display:flex;justify-content:space-between;align-items:center" class="pl-muted"><span class="pl-pill pl-pill--neutral">No class yet</span><svg class="pl-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></div>
+            <h3 class="pl-h3" style="margin-top:10px">Introduction to Social Economy</h3>
+            <div class="pl-muted pl-xs">L3 · attach a class to open it</div>
+            <div class="pl-progress" style="margin-top:14px" role="progressbar" aria-label="Sessions prepared" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div>
+          </a>
+        </div>
+
+        <div class="demo-two">
+          <section class="pl-card pl-enter" style="--i:5" aria-labelledby="h-raw">
+            <div class="demo-sec" style="margin-bottom:8px"><h2 id="h-raw" class="pl-h2">Raw results · B1 Groupe 2</h2><span class="pl-muted pl-xs">Each student's answers, as handed in</span></div>
+            <div class="pl-row"><span class="pl-pill pl-pill--sage" style="width:104px;justify-content:center">Handed in</span><div class="pl-row__body demo-row-b"><b>Léa Fontaine</b><small>16 / 16 answered · 13 min</small></div><button class="pl-btn pl-btn--ghost" type="button">Open</button></div>
+            <div class="pl-row"><span class="pl-pill pl-pill--gold" style="width:104px;justify-content:center">In progress</span><div class="pl-row__body demo-row-b"><b>Yanis Cherif</b><small>9 / 16 answered · autosaved 1 min ago</small></div><button class="pl-btn pl-btn--ghost" type="button">Open</button></div>
+            <div class="pl-row"><span class="pl-pill pl-pill--neutral" style="width:104px;justify-content:center">Not signed in</span><div class="pl-row__body demo-row-b"><b>Tom Rivière</b><small>Profile not claimed yet</small></div><button class="pl-btn pl-btn--secondary" type="button">Resend sign-in help</button></div>
+          </section>
+
+          <section class="pl-enter" style="--i:6" aria-labelledby="h-phone">
+            <h2 id="h-phone" class="pl-h2" style="margin-bottom:12px">Student test day <span class="pl-muted pl-xs" style="font-family:var(--pl-font-sans);font-weight:500">· 390px</span></h2>
+            <div class="demo-phone">
+              <div class="pl-card">
+                <div style="display:flex;justify-content:space-between;align-items:center"><span class="pl-eyebrow">Question 7 of 16</span><span class="pl-pill pl-pill--neutral">12 min left</span></div>
+                <div class="pl-progress" style="margin:12px 0 14px" role="progressbar" aria-label="Test progress" aria-valuenow="44" aria-valuemin="0" aria-valuemax="100"><i style="width:44%"></i></div>
+                <p style="margin:0 0 14px;font-size:16px;line-height:1.5">Deux séries ont la même moyenne mais des écarts-types très différents. Qu'est-ce que cela indique ?</p>
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <label class="pl-choice"><input type="radio" name="q7"><span>Une erreur de calcul</span></label>
+                  <label class="pl-choice"><input type="radio" name="q7" checked><span>Des étalements différents</span></label>
+                  <label class="pl-choice"><input type="radio" name="q7"><span>Des médianes différentes</span></label>
+                </div>
+              </div>
+              <div style="display:flex;gap:10px"><button class="pl-btn pl-btn--ghost" type="button">Back</button><button class="pl-btn pl-btn--primary pl-btn--block" type="button">Next question</button></div>
+              <div class="pl-field"><label class="pl-label" for="demo-email">School email</label><input class="pl-input" id="demo-email" type="email" placeholder="prenom.nom@ecole.example" autocomplete="username"><span class="pl-hint">Your school created your profile — your email is what recognises it.</span></div>
+            </div>
+          </section>
+        </div>
+
+        <section class="pl-card pl-card--well pl-enter" style="--i:7" aria-labelledby="h-later">
+          <h2 id="h-later" class="pl-h3">Later (V2) — the AI accent</h2>
+          <p class="pl-muted pl-sm" style="margin:6px 0 12px">Pulse has no AI in V0 or V1. The cyan is reserved for the day an AI speaks: AI-drafted items and the companion, which holds the screen's one glow.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="pl-pill pl-pill--ai">AI draft</span><span class="pl-pill pl-pill--sage">Approved</span><span class="pl-pill pl-pill--gold">Awaiting approval</span><span class="pl-pill pl-pill--risk">Rejected</span><span class="pl-pill pl-pill--neutral">Draft</span></div>
+        </section>
+      </main>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Theme switch (a per-viewer convenience; storage may be unavailable).
+  const root = document.documentElement;
+  const buttons = document.querySelectorAll('[data-set-theme]');
+  const apply = (t) => { root.dataset.theme = t; buttons.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.setTheme === t))); };
+  try { const s = localStorage.getItem('pulse-theme'); if (s) apply(s); } catch (e) {}
+  buttons.forEach(b => b.addEventListener('click', () => { apply(b.dataset.setTheme); try { localStorage.setItem('pulse-theme', b.dataset.setTheme); } catch (e) {} }));
+
+  // Pointer sheen on link cards.
+  document.querySelectorAll('[data-sheen]').forEach(el => el.addEventListener('pointermove', (e) => {
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
+    el.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+  }));
+
+  // Drawer under 1024px.
+  const rail = document.getElementById('rail'), menu = document.getElementById('menu'), scrim = document.getElementById('scrim');
+  const setOpen = (o) => { rail.classList.toggle('is-open', o); menu.setAttribute('aria-expanded', String(o)); };
+  menu.addEventListener('click', () => setOpen(!rail.classList.contains('is-open')));
+  scrim.addEventListener('click', () => setOpen(false));
+</script>
+</body>
+</html>

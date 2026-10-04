@@ -1,75 +1,173 @@
 # CLAUDE.md — Pulse
 
-> Distilled from the Notion **Pulse — Second Brain** (last synced 19 Sep 2026). Notion wins if this file and Notion disagree.
-> **Regenerate this file whenever the Notion Decision Log changes.**
+> Bridge file between the Notion Second Brain and this repo. **Regenerate it whenever the Decision Log changes.** Generated 2026-10-03 from: Claude Operating Guide, Decision Log (newest entry 3 Oct 2026: design direction + V0 decisions), Roadmap, Build Plan V0, Website Documentation, Data Architecture, Page Framework v10.
 
-## Read first (Notion)
+## What Pulse is
 
-1. 📖 Claude Operating Guide — rules of engagement
-2. 🧠 Pulse — Second Brain → Non-negotiables
-3. 🧾 Decision Log — newest entry wins
-4. 📋 Pulse Scrum Board — Status = In Progress / To Do
-5. Build spec: 🗺️ Page Framework v10 · 🏗️ Website Documentation · 🗄️ Data Architecture · 🔨 Build Plan
+A teacher-owned pre/post-class diagnostic for higher education. *Pulse* is a working name. Creator: **Parv Kaur**. Built with **Adrian Rosari**.
 
-## The product
+The loop is **Diagnose → Teach → Reinforce → Remeasure**. V0 proves the first half on the founders' own classes:
 
-Pulse (working name) — a teacher-owned pre/post-class diagnostic for higher education. Creator: **Parv Kaur**. Stage: V0 proof of concept, piloted on the founders' own classes. No commercialization until the loop is proven.
+- Students take an **entrance test during the first class**, on their phones.
+- They see **only their own results**.
+- The teacher reads the **raw results**.
 
-## Stack
+There is no commercialization before extended real-world proof.
 
-- React + Vite + TypeScript + Tailwind v4, hosted on **Vercel** (a preview deployment per branch).
-- **Supabase, EU region** (Frankfurt or Paris) for data and auth. Client in `src/lib/supabase.ts`, keys in `.env.local` (see `.env.example`).
-- **Zero serverless functions in V0**: the Supabase client plus Row Level Security (RLS) does everything.
-- Icons: `lucide-react`. Routing: `react-router`.
+## Source of truth
 
-## V0 scope (framework v10)
+1. Notion **🧾 Decision Log** — the newest entry wins.
+2. Notion topic pages: 🗺️ Page Framework v10, 🏗️ Website Documentation, 🗄️ Data Architecture, 🔨 Build Plan V0.
+3. This file.
+4. The approved mockups in `/design`.
 
-One role only: the **master account** (admin + teacher in one; the founders).
+If code and these disagree, stop and flag it — never silently pick one. Anything Claude invents to fill a gap is tagged `💡 [Claude-proposed — to validate]` in docs/PRs.
 
-- **The door**: sign in; on first visit, create the account from a pre-created profile (email recognised, password chosen).
-- **Student**: home · my modules · module page · entrance test (in the first class, 15–20 min) · my results (own only, general advice or preview) · sessions · session page · exercises · my progress.
-- **Teacher (inside one module)**: create the entrance test · set up the sessions · prepare a session (drop content, add exercises) · raw results (a simple list of each student's answers).
-- **Master**: create modules (with session count) · create classes with student profiles (name + email) · attach classes to modules.
+## V0 scope (framework v10) — build exactly this
 
-**V0 non-goals**: no AI engine · no join-by-module-link · no welcome email · no check-before-publishing · no self-enrollment · no separate teacher accounts.
+**The door**
+- Sign in.
+- First visit: create the account from a profile that **already exists**. The email is recognised and the student chooses a password.
+- Password reset.
+- No module link, no welcome email, no self-enrollment.
 
-## Data model (V0)
+**Student**
+- Home, My modules, Module page.
+- **Entrance test**: 15–20 min, one attempt, autosave and resume, a hand-in confirmation that shows no results. Handing it in unlocks the module.
+- **My results**: own results only, with general advice or a preview.
+- Session page: the teacher's materials and that session's exercises.
+- Exercises: answers go to raw results.
+- My progress.
 
-`classes → student_profiles → (class ↔ module attachments) → modules → sessions → exercises → answers`
+**Teacher** (in V0 this is a facet of the master account)
+- Home, My modules.
+- Create the entrance test, with draft / published states and versioning.
+- Set up the sessions.
+- Prepare a session: drop content, add exercises. Answers are optional.
+- **Raw results**: a per-class list of each student's answers, with CSV export.
 
-- The master account creates `student_profiles` (name + email) before any account exists.
-- Sign-up is allowed **only when the email matches a profile** — enforced in the database (trigger/RLS), not the UI.
-- `answers` holds both entrance-test and exercise answers; both feed the teacher's raw-results list.
-- **RLS guarantees own-results-only** for students and class-scoped reading for the teacher.
+**Master account** (the founders — the only role in V0)
+- Create modules (with a session count).
+- Create classes and their student profiles (name + email).
+- Attach classes to modules.
 
-## Non-negotiables
+**Not in V0** — don't build, don't stub visibly:
+- AI of any kind.
+- The publish check.
+- Feedback sum-up.
+- Companion chat (V1: predetermined Q&A).
+- Priced advice.
+- Separate teacher accounts.
+- Participation grade.
+- LTI.
+- Dark mode by default.
 
-- Pulse and Tremplin are permanently separate — no shared code, data model or roadmap.
-- The two data hierarchies never merge: no School/Batch/Group identifiers in the content hierarchy.
-- The teacher reviews and approves every AI-drafted artifact (EU AI Act human oversight).
-- No emotion or attention inference, ever (EU AI Act Art. 5(1)(f)).
-- Participation = manual teacher grade + measurable practice engagement, shown as two separate signals, never blended.
-- Never edit a taxonomy or test that is live for a class — version it.
-- Parv's and Adrian's institution lists stay separate.
-- Content naming: `Subject_Level_Session_Topic_ExN` (e.g. `ExcelAdvanced_Bachelors_S3_PivotTables_Ex2`).
+## Stack & layout
 
-## Design
+- **React + Vite + TypeScript + Tailwind v4**, deployed on **Vercel** (a preview per branch).
+- **Supabase in an EU region, Free plan** (decided 3 Oct 2026) for data and auth. The plan allows 2 active projects: exactly **dev + prod**, no third.
+  - Projects pause after 1 week without activity → `.github/workflows/keep-alive.yml` calls `public.ping()` daily. Still open the app the day before each class.
+  - No automatic backups and no point-in-time recovery → `.github/workflows/backup.yml` dumps prod nightly, encrypted, kept 30 days.
+  - Limits to watch: 500 MB database, 1 GB file storage, 5 GB egress. Keep session materials light (PDFs, not videos).
+- **Zero serverless functions in V0**: the Supabase client plus RLS does everything.
+- Icons: lucide. Fonts: Source Serif 4 + IBM Plex Sans (Google Fonts).
 
-- Locked palette (Tailwind tokens in `src/index.css`): `ink` #1B2A4A · `gold` #C9A227 · `sage` #2F7D6B · `paper` #F7F5F0.
-- Type pair: to confirm from `website-DESIGN.md` (not yet in this repo).
-- The app's look stays distinct from the marketing site. Student journey is **mobile-first**.
-- Implement **from approved mockups in `/design`**, not from prose. Approved journeys: _none yet_.
+```
+src/
+  ui/pulse-ui-kit/      design system (tokens, ground, components, Tailwind bridge, React parts) — see its README + MOTION.md
+  i18n/en.ts            every interface string (English shell)
+  data/                 the ONLY place that talks to Supabase (repository layer; mirrors the prototype's PulseData.repo method names)
+  features/door|student|teacher|master/
+supabase/
+  migrations/           schema + RLS (v10 model) — every change is a new migration
+  seed.sql              fictional demo class (dev only)
+  tests/rls.test.sql    pgTAP: the data rules, proven (36 assertions)
+.github/workflows/      ci.yml (lint + tsc + build + pgTAP on every PR) · keep-alive.yml · backup.yml
+design/                 approved Claude Design exports — implement FROM these, not from prose
+```
 
-## Build order (Build Plan, Step 2)
+Commands: `npm run dev` · `npm run build` · `npm run lint` · `npm run typecheck` · `npm run db:start` · `npm run db:reset` (migrations + seed) · `npm run db:test` (RLS tests). The Supabase CLI is a devDependency and `supabase/config.toml` is committed — the database commands need Docker running.
 
-Data layer → the door → student test journey → teacher module space → raw results → master screens last (seed provisioning data by hand until then).
+## Data rules (enforced in the database — keep it that way)
 
-## Definition of done
+The model is classes → student_profiles → class_modules → modules → sessions → exercises → answers, plus tests → test_questions → attempts.
 
-Works on the seeded demo class · follows the design system · respects own-results-only · Scrum Board status updated · decisions logged in the Decision Log.
+- **No self-enrollment.** A trigger on `auth.users` only lets an account be created when the email matches a pre-created `student_profiles` or `staff_accounts` row. Anything else raises `PULSE_NO_PROFILE`.
+- **Own results only.** RLS scopes every student read and write to their own profile(s). The master account reads everything.
+- **One attempt per student per test** (unique constraint). Answers can be edited only while the attempt is open: not handed in, within time + 2 min. Hand-in uses the server's clock and cannot be undone.
+- **Published tests are frozen.** Questions can't change, and a test can't return to draft. Publish a new version instead.
+- **Late exercise answers count** (decided 3 Oct 2026). An exercise answered after the next session opens is accepted, flagged `late` by a trigger, counted in the student's private progress and marked late in raw results. An answer given **on time** is the teacher's report line: it freezes once the next session opens (`PULSE_REPORT_FROZEN`). Late answers stay editable. Deadline = start of the next session's scheduled day, Europe/Paris (`exercise_deadline()`).
+- **Answer keys and advice** sit in `exercise_keys` / `test_question_keys`, which students can't read.
+- **Two hierarchies never merge.** Content (module → session → exercise) never carries school/class/group ids.
+- Any change to these rules needs a migration **and** a test in `supabase/tests/`. Run `supabase test db` before every PR that touches SQL (CI runs it too).
+- Supabase grants `anon` on new tables by default: **every migration that creates a table must enable RLS and `revoke all … from anon`.**
 
-## Git workflow
+## Design system — Pulse — Glass
 
-- `main` is protected and always deployable (Vercel production).
-- Short-lived branches (`feat/…`, `fix/…`, `docs/…`) → pull request → merge. Each branch gets a Vercel preview.
-- Never commit `.env.local` or the Supabase `service_role` key.
+Decided by Adrian + Parv on 26 Sep 2026.
+
+**Themes — two, and only two (decided 4 Oct 2026)**
+- `hybrid` = **our light mode, the default**: paper cards; glass only in the sidebar and hero.
+- `dark` = **our dark mode**: glass everywhere over lit navy. Offered by a toggle, not tied to `prefers-color-scheme` yet (test it on real phones in class first).
+- The kit's `light` (C′) theme stays in `tokens.css` as a variation but **the app never selects it**: `PulseTheme` is `"hybrid" | "dark"`, `index.html` ships `data-theme="hybrid"`, and `ThemeProvider` carries `toggleTheme()`. Don't reintroduce C′ without a Decision Log entry.
+
+The full spec is `src/ui/pulse-ui-kit/README.md` and `MOTION.md`. Design System artifact: https://claude.ai/artifact/LueUu8ycgUqosSBvZgdwMt
+
+**Rules**
+- **The one gesture.** On hover a surface rises 3px and its shadow grows from tier 1 to tier 3. Press puts it back. Everything runs at 220 ms with `cubic-bezier(.2,.6,.2,1)`. Use the `pl-*` classes (the motion is already wired); use Tailwind utilities for layout only.
+- **Colour meaning.** Gold = the next step (one primary button per view) and the active nav. Sage = progress / handed in. Risk red = closed or destructive only. **AI cyan only where an AI speaks** — nothing in V0/V1, except focus rings.
+- **Status = colour + a word**, always.
+- **Mobile-first for the student test day** (390px). Inputs are 16px on phones and targets at least 44px.
+- **Glass.** Never put `opacity` < 1 or `filter` on an ancestor of a glass surface (it kills the blur). Use one blur per stack.
+- **Accessibility.** Text reaches 4.5:1 against the worst ground pixel. Honour reduced motion, reduced transparency and more contrast (already handled in tokens.css).
+
+## Build order (Build Plan, step 2)
+
+Work in this order:
+
+1. Data layer
+2. The door
+3. Student test journey
+4. Teacher module space
+5. Raw results
+6. Master screens
+
+Run each block against the seeded demo class. The founders' provisioning can be done by hand with the seed or provisioning script until the master screens exist.
+
+**Definition of done** for each task:
+- It works on the seeded demo class.
+- It follows the design system.
+- It respects own-results-only.
+- The RLS tests are green.
+- The lint + TypeScript + build GitHub Action is green.
+- The Scrum Board status is updated.
+- Any decision taken is logged in the Decision Log.
+
+## Never
+
+- Merge Pulse with Tremplin in any way.
+- Put school/batch/group identifiers into content tables.
+- Add emotion or attention inference (EU AI Act Art. 5(1)(f)).
+- Blend the two participation signals into one score (V1+).
+- Edit a live test or taxonomy in place — version it.
+- Show a student another student's data, rankings or comparisons.
+- Describe Parv and Adrian's roles differently from the Second Brain, or merge their institution lists.
+- Commit secrets. Supabase keys live in Vercel env vars and `.env.local` (git-ignored). Only the anon key is used in the browser.
+
+## Content conventions
+
+- **Interface language is English** (decided 3 Oct 2026): navigation, buttons, labels, messages and errors. Keep every UI string in `src/i18n/en.ts` so a French shell can be added later without a hunt.
+- Content language follows the course: English by default; *Statistiques commerciales* (IDRAC B1) and *RSE* (ABS MPF2) are in French.
+- Asset naming: `Subject_Level_Session_Topic_ExN` (e.g. `ExcelAdvanced_Bachelors_S3_PivotTables_Ex2`).
+- All demo data is fictional and labelled as such in the UI.
+
+## Decided for V0 (3 Oct 2026)
+
+- Interface language: **English** (see Content conventions).
+- Supabase: **Free plan** (see Stack & layout for the consequences).
+- Late exercise attempts: **count in the student's private progress** (see Data rules).
+
+## Still open (don't guess — ask)
+
+- **Pilot module(s)** and the real entrance test (Parv).
+- **Data-retention policy** and the student privacy notice: required before the first real pilot.
