@@ -49,8 +49,16 @@ const toQuestion = (r: QuestionRow): Question => ({
 /** Maps what the database says into something a screen can put in front of a student. */
 function fail(error: { message?: string; code?: string } | null, fallback: PulseError): never {
   const message = error?.message ?? ''
-  if (message.includes('PULSE_NO_PROFILE')) throw new PulseError('NO_PROFILE')
-  if (message.includes('PULSE_ATTEMPT_CLOSED')) throw new PulseError('ATTEMPT_CLOSED')
+  const says = (marker: string) => message.includes(marker)
+
+  if (says('PULSE_NO_PROFILE')) throw new PulseError('NO_PROFILE')
+  if (says('PULSE_ATTEMPT_CLOSED')) throw new PulseError('ATTEMPT_CLOSED')
+  if (says('PULSE_TIME_UP')) throw new PulseError('TIME_UP')
+  if (says('PULSE_ANSWER_TOO_LONG')) throw new PulseError('ANSWER_TOO_LONG')
+  if (says('PULSE_TEST_CLOSED')) throw new PulseError('TEST_NOT_AVAILABLE')
+  if (says('PULSE_NOT_YOURS') || says('PULSE_WRONG_QUESTION') || says('PULSE_ANSWER_RETARGET')) {
+    throw new PulseError('NOT_AUTHORISED')
+  }
   if (error?.code === '23505') throw new PulseError('ATTEMPT_EXISTS')
   if (error?.code === '42501') throw new PulseError('NOT_AUTHORISED')
   if (message.toLowerCase().includes('invalid login credentials')) throw new PulseError('BAD_CREDENTIALS')
@@ -274,52 +282,39 @@ export function createSupabaseRepo(client: SupabaseClient): PulseRepo {
       },
 
       async saveAnswer(attemptId, questionId, response) {
-        const v = await requireStudent()
-
-        const { data: existing } = await client
-          .from('answers')
-          .select('id')
-          .eq('attempt_id', attemptId)
-          .eq('question_id', questionId)
-          .maybeSingle()
-
-        if (existing) {
-          const { data, error } = await client
-            .from('answers')
-            .update({ response })
-            .eq('id', (existing as Row).id as string)
-            .select('id')
-          if (error) fail(error, new PulseError('UNKNOWN'))
-          // RLS filters the row rather than raising: no row back means the attempt is closed.
-          if (!data || data.length === 0) throw new PulseError('ATTEMPT_CLOSED')
-          return
-        }
-
-        const { data, error } = await client
-          .from('answers')
-          .insert({
-            attempt_id: attemptId,
-            question_id: questionId,
-            student_profile_id: v.profileIds[0],
-            response,
-          })
-          .select('id')
-        if (error) fail(error, new PulseError('ATTEMPT_CLOSED'))
-        if (!data || data.length === 0) throw new PulseError('ATTEMPT_CLOSED')
+        await requireStudent()
+        // One call: the function checks ownership, the open attempt, the time
+        // limit and that the question belongs to the test, and raises a named
+        // error rather than quietly saving nothing.
+        const { error } = await client.rpc('save_answer', {
+          p_attempt_id: attemptId,
+          p_question_id: questionId,
+          p_response: response,
+        })
+        if (error) fail(error, new PulseError('UNKNOWN'))
       },
 
       async handIn(attemptId) {
         await requireStudent()
-        // submitted_at is stamped by the server's clock in a trigger; the value sent is ignored.
-        const { data, error } = await client
+        // submitted_at comes from the server's clock, inside the function.
+        const { data, error } = await client.rpc('hand_in_attempt', { p_attempt_id: attemptId })
+        if (error) fail(error, new PulseError('ATTEMPT_CLOSED'))
+
+        const { data: row } = await client
           .from('attempts')
-          .update({ submitted_at: new Date().toISOString() })
-          .eq('id', attemptId)
-          .is('submitted_at', null)
           .select('id, test_id, student_profile_id, started_at, submitted_at')
-        if (error) fail(error, new PulseError('UNKNOWN'))
-        if (!data || data.length === 0) throw new PulseError('ATTEMPT_CLOSED')
-        return toAttempt(data[0] as AttemptRow)
+          .eq('id', attemptId)
+          .single()
+        if (row) return toAttempt(row as AttemptRow)
+
+        // Fall back to what the function returned, so the screen can still move on.
+        return {
+          id: attemptId,
+          testId: '',
+          studentProfileId: '',
+          startedAt: '',
+          submittedAt: data as string,
+        }
       },
     },
 

@@ -61,9 +61,30 @@ export const en = {
 
 export type Strings = typeof en;
 
-// Maps database error codes raised by the triggers to interface messages.
+// What the student or teacher reads when the data layer refuses something.
+// The keys are PulseErrorCode (src/data/types.ts); every refusal has a sentence,
+// because a silent failure in class is worse than a blunt one.
+export const errorMessages = {
+  NO_PROFILE: en.door.noProfile,
+  BAD_CREDENTIALS: "That email and password do not match.",
+  ATTEMPT_CLOSED: "You have already handed this test in, so it can no longer change.",
+  ATTEMPT_EXISTS: "You have already started this test.",
+  TEST_NOT_AVAILABLE: "This test is not open.",
+  TIME_UP: "The time for this test has run out. Your saved answers were kept.",
+  ANSWER_TOO_LONG: "That answer is too long. Shorten it and it will save.",
+  NOT_AUTHORISED: "You cannot do that.",
+  UNKNOWN: en.common.error,
+} as const;
+
+export function messageForError(code: keyof typeof errorMessages): string {
+  return errorMessages[code] ?? en.common.error;
+}
+
+// Trigger names, for the rare path where a raw database message surfaces.
 export function messageForDbError(message: string): string {
   if (message.includes("PULSE_NO_PROFILE")) return en.door.noProfile;
   if (message.includes("PULSE_REPORT_FROZEN")) return en.exercise.frozen;
+  if (message.includes("PULSE_ATTEMPT_CLOSED")) return errorMessages.ATTEMPT_CLOSED;
+  if (message.includes("PULSE_TIME_UP")) return errorMessages.TIME_UP;
   return en.common.error;
 }

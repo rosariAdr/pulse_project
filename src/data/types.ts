@@ -96,8 +96,13 @@ export type PulseErrorCode =
   | 'ATTEMPT_CLOSED' // already handed in
   | 'ATTEMPT_EXISTS' // one attempt per student per test
   | 'TEST_NOT_AVAILABLE' // not published, closed, or not attached to this student's class
+  | 'TIME_UP' // past the time limit (plus the two-minute grace)
+  | 'ANSWER_TOO_LONG'
   | 'NOT_AUTHORISED'
   | 'UNKNOWN'
+
+/** The longest answer the database accepts, mirrored here so the UI can warn first. */
+export const MAX_ANSWER_LENGTH = 5000
 
 export class PulseError extends Error {
   readonly code: PulseErrorCode

@@ -1,6 +1,7 @@
 import { DEMO_PASSWORD, demo } from './demoData'
 import type { PulseRepo } from './repo'
 import {
+  MAX_ANSWER_LENGTH,
   PulseError,
   type Attempt,
   type Question,
@@ -224,6 +225,15 @@ export function createFakeRepo(initial?: Partial<FakeState>): PulseRepo & { stat
         const attempt = openAttempt(attemptId, viewer.profileIds)
         if (!demo.questions.some((q) => q.id === questionId && q.testId === attempt.testId)) {
           throw new PulseError('NOT_AUTHORISED', 'That question belongs to another test.')
+        }
+        if (response.length > MAX_ANSWER_LENGTH) {
+          throw new PulseError('ANSWER_TOO_LONG', `An answer is limited to ${MAX_ANSWER_LENGTH} characters.`)
+        }
+        // Same grace as save_answer() in the database: the limit plus two minutes.
+        const test = demo.tests.find((t) => t.id === attempt.testId)!
+        const deadline = new Date(attempt.startedAt).getTime() + (test.timeLimitMinutes + 2) * 60_000
+        if (Date.now() > deadline) {
+          throw new PulseError('TIME_UP', 'The time for this test has run out.')
         }
         const existing = state.answers.find((r) => r.attemptId === attemptId && r.questionId === questionId)
         if (existing) existing.response = response

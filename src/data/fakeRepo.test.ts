@@ -116,6 +116,22 @@ describe('taking the test', () => {
     expect((await repo.student.test(STAT))!.attempt?.submittedAt).toBe(first.submittedAt)
   })
 
+  it('refuses an answer longer than the database accepts', async () => {
+    await repo.auth.signIn(LEA, DEMO_PASSWORD)
+    const attempt = await repo.student.startAttempt(STAT)
+    const [q1] = (await repo.student.test(STAT))!.questions
+    expect(await codeOf(() => repo.student.saveAnswer(attempt.id, q1.id, 'x'.repeat(5001)))).toBe('ANSWER_TOO_LONG')
+  })
+
+  it('refuses a save once the time limit plus its grace has passed', async () => {
+    await repo.auth.signIn(LEA, DEMO_PASSWORD)
+    const attempt = await repo.student.startAttempt(STAT)
+    const [q1] = (await repo.student.test(STAT))!.questions
+    // The test lasts 20 minutes; pretend it started half an hour ago.
+    attempt.startedAt = new Date(Date.now() - 30 * 60_000).toISOString()
+    expect(await codeOf(() => repo.student.saveAnswer(attempt.id, q1.id, 'late'))).toBe('TIME_UP')
+  })
+
   it('refuses a question that belongs to another test', async () => {
     await repo.auth.signIn(LEA, DEMO_PASSWORD)
     const attempt = await repo.student.startAttempt(STAT)
