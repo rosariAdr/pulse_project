@@ -125,6 +125,9 @@ select throws_ok(
   'P0001', null, 'a published test cannot be deleted — version it instead');
 
 -- --------------------------------------------- 7. anon stays out of new tables
+-- Back to the owner: section 6 left us acting as the master, who cannot create
+-- tables. A later migration is written by the owner, so the test must be too.
+reset role;
 create table public.later_table (id uuid primary key default gen_random_uuid());
 set role anon;
 select throws_ok(
