@@ -1,12 +1,13 @@
-# Every pull request: lint + TypeScript + build, and the database rules (pgTAP).
-# Board tasks: "GitHub Action: lint + TypeScript + build on every PR"
-#            + "Automated tests of the RLS rules (SQL)".
+# Every pull request, and every push to dev or main: the three test layers.
+#   app       lint + types + unit/component tests (vitest) + build
+#   e2e       the journeys in a real browser, laptop and phone (Playwright)
+#   database  the data rules (pgTAP) — the only place RLS is proven
 name: CI
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   app:
@@ -22,6 +23,25 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Runs against the in-memory demo class: no project, no secrets.
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
 
   database:
     runs-on: ubuntu-latest

@@ -86,7 +86,25 @@ supabase/
 design/                 approved Claude Design exports — implement FROM these, not from prose
 ```
 
-Commands: `npm run dev` · `npm run build` · `npm run lint` · `npm run typecheck` · `npm run db:start` · `npm run db:reset` (migrations + seed) · `npm run db:test` (RLS tests). The Supabase CLI is a devDependency and `supabase/config.toml` is committed — the database commands need Docker running.
+Commands: `npm run dev` · `npm run build` · `npm run lint` · `npm run typecheck` · `npm test` (unit + component) · `npm run test:e2e` (Playwright) · `npm run test:all` · `npm run db:start` · `npm run db:reset` (migrations + seed) · `npm run db:test` (RLS tests). The Supabase CLI is a devDependency and `supabase/config.toml` is committed — the database commands need Docker running.
+
+## Branches (decided 5 Oct 2026)
+
+- **`main`** — always deployable, Vercel **production**, the version a real class uses. Nothing is committed to it directly: it only ever receives `dev`.
+- **`dev`** — the integration branch, Vercel **preview**. Work lands here first and stays until it has been seen working.
+- **`feat/…` · `fix/…` · `chore/…` · `docs/…`** — short-lived, cut from `dev`, merged back into `dev` through a pull request. Delete the branch once merged.
+
+A release is a pull request from `dev` to `main`, opened when the loop works on the demo class and CI is green. Never merge `main` into `dev` to "catch up" — if they diverge, something was committed to `main` that should not have been.
+
+CI (lint, types, unit, end-to-end, pgTAP) runs on every pull request and on every push to `dev` and `main`. A red CI is never merged.
+
+Environments follow the branches: **`main` → the prod Supabase project · `dev` and previews → the dev project**, through Vercel's per-environment variables. A preview must never point at production data.
+
+## Tests
+
+Four layers, described in `docs/testing.md`: the data rules (pgTAP) · the repository (Vitest) · the screens (Vitest + Testing Library) · the journeys (Playwright, laptop **and** phone). The end-to-end tests run on the built app with `VITE_DATA_SOURCE=fake`, so they need no project and no secret.
+
+Own-results-only is proven by the database tests and nowhere else — the in-memory repository imitates the rule so screens behave the same, but it is a development double, never a security boundary. Any change to RLS needs a migration **and** a test in the same pull request.
 
 ## Data rules (enforced in the database — keep it that way)
 
