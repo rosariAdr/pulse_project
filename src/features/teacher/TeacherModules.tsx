@@ -92,7 +92,10 @@ export function TeacherModules() {
 
       {load.kind === 'ready' &&
         load.modules.map((module) => (
-          <ModuleRow key={module.id} module={module} onPointerMove={sheen} />
+          <div key={module.id}>
+            <ModuleRow module={module} onPointerMove={sheen} />
+            <ModuleActions moduleId={module.id} />
+          </div>
         ))}
     </section>
   )
@@ -138,5 +141,22 @@ function ModuleRow({
         <span className="pl-muted pl-sm shrink-0">{handedIn}</span>
       </div>
     </Link>
+  )
+}
+
+/**
+ * The two things a teacher does inside a module in V0: write the entrance test,
+ * read the answers. Kept outside the card's link so each is its own target.
+ */
+export function ModuleActions({ moduleId }: { moduleId: string }) {
+  return (
+    <p className="mt-2 flex flex-wrap gap-2">
+      <Link to={`/teacher/${moduleId}/test`} className="pl-btn pl-btn--secondary">
+        Entrance test
+      </Link>
+      <Link to={`/teacher/${moduleId}`} className="pl-btn pl-btn--ghost">
+        {en.nav.rawResults}
+      </Link>
+    </p>
   )
 }

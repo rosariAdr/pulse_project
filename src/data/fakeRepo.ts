@@ -9,7 +9,10 @@ import {
   type RawResults,
   type StudentModule,
   type TeacherModule,
+  type TestForTeacher,
   type TestForStudent,
+  type TestStatus,
+  type NewQuestion,
   type Viewer,
 } from './types'
 
@@ -27,14 +30,41 @@ import {
 type Account = { email: string; password: string }
 type AnswerRow = { attemptId: string; questionId: string; studentProfileId: string; response: string }
 
+type TestRow = {
+  id: string
+  moduleId: string
+  version: number
+  status: TestStatus
+  timeLimitMinutes: number
+}
+type QuestionRow = Question & { testId: string }
+
 export type FakeState = {
   accounts: Account[]
   attempts: Attempt[]
   answers: AnswerRow[]
+  /** Tests and questions live in the state, not in the demo constant: the teacher writes them. */
+  tests: TestRow[]
+  questions: QuestionRow[]
   viewerEmail: string | null
 }
 
 const lower = (s: string) => s.trim().toLowerCase()
+
+/** The database holds the same rule: options exist exactly for a multiple choice. */
+function checkedQuestion(question: NewQuestion): NewQuestion {
+  const prompt = question.prompt.trim()
+  if (!prompt) throw new PulseError('QUESTION_INCOMPLETE', 'A question needs a prompt.')
+
+  if (question.kind === 'mcq') {
+    const options = (question.options ?? []).map((o) => o.trim()).filter(Boolean)
+    if (options.length < 2) {
+      throw new PulseError('QUESTION_INCOMPLETE', 'A multiple choice needs at least two options.')
+    }
+    return { ...question, prompt, options }
+  }
+  return { ...question, prompt, options: null }
+}
 
 function freshState(): FakeState {
   return {
@@ -42,6 +72,16 @@ function freshState(): FakeState {
     accounts: [...demo.staff, ...demo.profiles].map((p) => ({ email: lower(p.email), password: DEMO_PASSWORD })),
     attempts: [],
     answers: [],
+    tests: demo.tests.map((t) => ({ ...t })),
+    questions: demo.questions.map(({ testId, id, position, kind, prompt, options, skill }) => ({
+      testId,
+      id,
+      position,
+      kind,
+      prompt,
+      options: options ? [...options] : null,
+      skill,
+    })),
     viewerEmail: null,
   }
 }
@@ -61,8 +101,8 @@ function viewerFor(email: string): Viewer | null {
   }
 }
 
-const questionsOf = (testId: string): Question[] =>
-  demo.questions
+const questionsIn = (rows: QuestionRow[], testId: string): Question[] =>
+  rows
     .filter((q) => q.testId === testId)
     .sort((a, b) => a.position - b.position)
     .map(({ id, position, kind, prompt, options, skill }) => ({ id, position, kind, prompt, options, skill }))
@@ -122,7 +162,7 @@ export function createFakeRepo(
   }
 
   const publishedTestOf = (moduleId: string) =>
-    demo.tests.find((t) => t.moduleId === moduleId && t.status === 'published') ?? null
+    state.tests.find((t) => t.moduleId === moduleId && t.status === 'published') ?? null
 
   const studentModule = (viewer: Extract<Viewer, { kind: 'student' }>, moduleId: string): StudentModule | null => {
     const profile = profileForModule(viewer, moduleId)
@@ -142,6 +182,27 @@ export function createFakeRepo(
       testStatus: !test ? 'none' : !attempt ? 'not-started' : attempt.submittedAt ? 'handed-in' : 'in-progress',
     }
   }
+
+  /** A test can only be written while it is a draft — a live test is versioned. */
+  const draftOrFail = (testId: string): TestRow => {
+    const test = state.tests.find((t) => t.id === testId)
+    if (!test) throw new PulseError('NOT_AUTHORISED', 'No such test.')
+    if (test.status !== 'draft') {
+      throw new PulseError('TEST_FROZEN', 'A published test is versioned, never edited.')
+    }
+    return test
+  }
+
+  const teacherTest = (test: TestRow, moduleTitle: string): TestForTeacher => ({
+    id: test.id,
+    moduleId: test.moduleId,
+    moduleTitle,
+    version: test.version,
+    status: test.status,
+    timeLimitMinutes: test.timeLimitMinutes,
+    questions: questionsIn(state.questions, test.id),
+    handedIn: state.attempts.filter((a) => a.testId === test.id && a.submittedAt !== null).length,
+  })
 
   const openAttempt = (attemptId: string, studentProfileIds: string[]): Attempt => {
     const attempt = state.attempts.find((a) => a.id === attemptId)
@@ -225,7 +286,7 @@ export function createFakeRepo(
           moduleId,
           moduleTitle: mod.title,
           timeLimitMinutes: test.timeLimitMinutes,
-          questions: questionsOf(test.id),
+          questions: questionsIn(state.questions, test.id),
           attempt,
           answers,
         } satisfies TestForStudent
@@ -254,14 +315,14 @@ export function createFakeRepo(
       async saveAnswer(attemptId, questionId, response) {
         const viewer = requireStudent()
         const attempt = openAttempt(attemptId, viewer.profileIds)
-        if (!demo.questions.some((q) => q.id === questionId && q.testId === attempt.testId)) {
+        if (!state.questions.some((q) => q.id === questionId && q.testId === attempt.testId)) {
           throw new PulseError('NOT_AUTHORISED', 'That question belongs to another test.')
         }
         if (response.length > MAX_ANSWER_LENGTH) {
           throw new PulseError('ANSWER_TOO_LONG', `An answer is limited to ${MAX_ANSWER_LENGTH} characters.`)
         }
         // Same grace as save_answer() in the database: the limit plus two minutes.
-        const test = demo.tests.find((t) => t.id === attempt.testId)!
+        const test = state.tests.find((t) => t.id === attempt.testId)!
         const deadline = new Date(attempt.startedAt).getTime() + (test.timeLimitMinutes + 2) * 60_000
         if (Date.now() > deadline) {
           throw new PulseError('TIME_UP', 'The time for this test has run out.')
@@ -293,7 +354,9 @@ export function createFakeRepo(
         return demo.modules.map((mod) => {
           const classIds = demo.classModules.filter((cm) => cm.moduleId === mod.id).map((cm) => cm.classId)
           const profiles = demo.profiles.filter((p) => classIds.includes(p.classId))
-          const test = demo.tests.find((t) => t.moduleId === mod.id) ?? null
+          // What the class can see comes first; a draft is only what comes next.
+          const tests = state.tests.filter((t) => t.moduleId === mod.id)
+          const test = tests.find((t) => t.status === 'published') ?? tests.at(-1) ?? null
           const handedIn = test
             ? state.attempts.filter((a) => a.testId === test.id && a.submittedAt !== null).length
             : 0
@@ -312,14 +375,97 @@ export function createFakeRepo(
         })
       },
 
+      async test(moduleId) {
+        requireMaster()
+        const mod = demo.modules.find((m) => m.id === moduleId)
+        if (!mod) throw new PulseError('NOT_AUTHORISED', 'No such module.')
+        const tests = state.tests.filter((t) => t.moduleId === moduleId)
+        // The draft being written wins: it is what the teacher came here for.
+        const test = tests.find((t) => t.status === 'draft') ?? tests.find((t) => t.status === 'published')
+        return test ? teacherTest(test, mod.title) : null
+      },
+
+      async createDraft(moduleId) {
+        requireMaster()
+        const mod = demo.modules.find((m) => m.id === moduleId)
+        if (!mod) throw new PulseError('NOT_AUTHORISED', 'No such module.')
+        const existing = state.tests.filter((t) => t.moduleId === moduleId)
+        if (existing.some((t) => t.status === 'draft')) {
+          throw new PulseError('TEST_ALREADY_DRAFTED', 'This module already has a draft.')
+        }
+        // A published test is never edited: the next version starts empty.
+        const draft: TestRow = {
+          id: `test-${state.tests.length + 1}`,
+          moduleId,
+          version: Math.max(0, ...existing.map((t) => t.version)) + 1,
+          status: 'draft',
+          timeLimitMinutes: 20,
+        }
+        state.tests.push(draft)
+        remember()
+        return teacherTest(draft, mod.title)
+      },
+
+      async addQuestion(testId, question) {
+        requireMaster()
+        const test = draftOrFail(testId)
+        const row: QuestionRow = {
+          testId,
+          id: `question-${state.questions.length + 1}`,
+          position: questionsIn(state.questions, test.id).length + 1,
+          ...checkedQuestion(question),
+        }
+        state.questions.push(row)
+        remember()
+        return { ...row }
+      },
+
+      async updateQuestion(questionId, question) {
+        requireMaster()
+        const row = state.questions.find((q) => q.id === questionId)
+        if (!row) throw new PulseError('NOT_AUTHORISED', 'No such question.')
+        draftOrFail(row.testId)
+        Object.assign(row, checkedQuestion(question))
+        remember()
+        return { ...row }
+      },
+
+      async removeQuestion(questionId) {
+        requireMaster()
+        const row = state.questions.find((q) => q.id === questionId)
+        if (!row) return
+        draftOrFail(row.testId)
+        state.questions = state.questions.filter((q) => q.id !== questionId)
+        // Positions stay 1..n so the student sees no gap.
+        questionsIn(state.questions, row.testId).forEach((q, i) => {
+          const found = state.questions.find((x) => x.id === q.id)
+          if (found) found.position = i + 1
+        })
+        remember()
+      },
+
+      async publish(testId) {
+        requireMaster()
+        const test = draftOrFail(testId)
+        if (questionsIn(state.questions, testId).length === 0) {
+          throw new PulseError('TEST_EMPTY', 'Add at least one question before publishing.')
+        }
+        // One published test per module: the previous version closes.
+        for (const other of state.tests) {
+          if (other.moduleId === test.moduleId && other.status === 'published') other.status = 'closed'
+        }
+        test.status = 'published'
+        remember()
+      },
+
       async rawResults(moduleId) {
         requireMaster()
         const mod = demo.modules.find((m) => m.id === moduleId)
         if (!mod) throw new PulseError('NOT_AUTHORISED', 'No such module.')
-        const test = demo.tests.find((t) => t.moduleId === moduleId) ?? null
+        const test = state.tests.find((t) => t.moduleId === moduleId) ?? null
         const classIds = demo.classModules.filter((cm) => cm.moduleId === moduleId).map((cm) => cm.classId)
         const profiles = demo.profiles.filter((p) => classIds.includes(p.classId))
-        const questions = test ? questionsOf(test.id) : []
+        const questions = test ? questionsIn(state.questions, test.id) : []
 
         const attemptOf = (profileId: string) =>
           test ? (state.attempts.find((a) => a.testId === test.id && a.studentProfileId === profileId) ?? null) : null

@@ -100,6 +100,10 @@ export const errorMessages = {
   TEST_NOT_AVAILABLE: "This test is not open.",
   TIME_UP: "The time for this test has run out. Your saved answers were kept.",
   ANSWER_TOO_LONG: "That answer is too long. Shorten it and it will save.",
+  TEST_FROZEN: "This test is published, so it can no longer change. Publish a new version instead.",
+  TEST_EMPTY: "Add at least one question before publishing.",
+  TEST_ALREADY_DRAFTED: "There is already a draft for this module.",
+  QUESTION_INCOMPLETE: "This question is not complete yet.",
   NOT_AUTHORISED: "You cannot do that.",
   UNKNOWN: en.common.error,
 } as const;

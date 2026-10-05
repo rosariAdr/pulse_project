@@ -54,6 +54,28 @@ export type TestForStudent = {
   answers: Record<string, string>
 }
 
+/** A question being written. Position is decided by the order it is added in. */
+export type NewQuestion = {
+  kind: QuestionKind
+  prompt: string
+  /** Required for 'mcq', forbidden otherwise — the database enforces the same. */
+  options: string[] | null
+  skill: string | null
+}
+
+/** The test as its author sees it, draft or published. */
+export type TestForTeacher = {
+  id: string
+  moduleId: string
+  moduleTitle: string
+  version: number
+  status: TestStatus
+  timeLimitMinutes: number
+  questions: Question[]
+  /** How many students have handed this version in. Published tests only. */
+  handedIn: number
+}
+
 export type TeacherModule = {
   id: string
   code: string | null
@@ -98,6 +120,10 @@ export type PulseErrorCode =
   | 'TEST_NOT_AVAILABLE' // not published, closed, or not attached to this student's class
   | 'TIME_UP' // past the time limit (plus the two-minute grace)
   | 'ANSWER_TOO_LONG'
+  | 'TEST_FROZEN' // a published test is versioned, never edited
+  | 'TEST_EMPTY' // nothing to publish yet
+  | 'TEST_ALREADY_DRAFTED'
+  | 'QUESTION_INCOMPLETE'
   | 'NOT_AUTHORISED'
   | 'UNKNOWN'
 

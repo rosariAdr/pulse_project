@@ -1,4 +1,14 @@
-import type { Attempt, RawResults, StudentModule, TestForStudent, TeacherModule, Viewer } from './types'
+import type {
+  Attempt,
+  NewQuestion,
+  Question,
+  RawResults,
+  StudentModule,
+  TeacherModule,
+  TestForStudent,
+  TestForTeacher,
+  Viewer,
+} from './types'
 
 /**
  * The only seam between the screens and the database.
@@ -42,5 +52,18 @@ export interface PulseRepo {
     modules(): Promise<TeacherModule[]>
     /** Every student's answers for that module's test. Master only. */
     rawResults(moduleId: string): Promise<RawResults>
+
+    /** The draft being written, or the published one if there is no draft. */
+    test(moduleId: string): Promise<TestForTeacher | null>
+    /**
+     * Starts a draft for this module. If a published test exists, this is its
+     * next version — a live test is never edited in place.
+     */
+    createDraft(moduleId: string): Promise<TestForTeacher>
+    addQuestion(testId: string, question: NewQuestion): Promise<Question>
+    updateQuestion(questionId: string, question: NewQuestion): Promise<Question>
+    removeQuestion(questionId: string): Promise<void>
+    /** Irreversible: the questions freeze and students can take it. */
+    publish(testId: string): Promise<void>
   }
 }

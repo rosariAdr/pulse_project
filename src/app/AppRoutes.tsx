@@ -6,6 +6,7 @@ import { MyModules } from '../features/student/MyModules'
 import { TestRun } from '../features/student/TestRun'
 import { RawResults } from '../features/teacher/RawResults'
 import { TeacherModules } from '../features/teacher/TeacherModules'
+import { TestBuilder } from '../features/teacher/TestBuilder'
 import { en } from '../i18n/en'
 import { Shell } from './Shell'
 import { useSession } from './session'
@@ -43,6 +44,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/teacher" element={<Shell title={en.nav.myModules}><TeacherModules /></Shell>} />
+      <Route path="/teacher/:moduleId/test" element={<Shell title="Entrance test"><TestBuilder /></Shell>} />
       <Route path="/teacher/:moduleId" element={<Shell title={en.nav.rawResults}><RawResults /></Shell>} />
       <Route path="*" element={<Navigate to="/teacher" replace />} />
     </Routes>

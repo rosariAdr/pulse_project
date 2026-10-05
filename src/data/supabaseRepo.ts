@@ -8,7 +8,10 @@ import {
   type RawResults,
   type StudentModule,
   type TeacherModule,
+  type NewQuestion,
   type TestForStudent,
+  type TestForTeacher,
+  type TestStatus,
   type Viewer,
 } from './types'
 
@@ -27,6 +30,7 @@ import {
 type Row = Record<string, unknown>
 
 type AttemptRow = { id: string; test_id: string; student_profile_id: string; started_at: string; submitted_at: string | null }
+type TestRow = { id: string; module_id: string; version: number; status: TestStatus; time_limit_minutes: number }
 type QuestionRow = { id: string; position: number; kind: Question['kind']; prompt: string; options: string[] | null; skill: string | null }
 
 const toAttempt = (r: AttemptRow): Attempt => ({
@@ -65,7 +69,47 @@ function fail(error: { message?: string; code?: string } | null, fallback: Pulse
   throw fallback
 }
 
+/** Options exist exactly for a multiple choice — the database holds the same check. */
+function checkedQuestion(question: NewQuestion): NewQuestion {
+  const prompt = question.prompt.trim()
+  if (!prompt) throw new PulseError('QUESTION_INCOMPLETE', 'A question needs a prompt.')
+  if (question.kind === 'mcq') {
+    const options = (question.options ?? []).map((o) => o.trim()).filter(Boolean)
+    if (options.length < 2) {
+      throw new PulseError('QUESTION_INCOMPLETE', 'A multiple choice needs at least two options.')
+    }
+    return { ...question, prompt, options }
+  }
+  return { ...question, prompt, options: null }
+}
+
 export function createSupabaseRepo(client: SupabaseClient): PulseRepo {
+  /** Builds the teacher's view of a test, including its questions and hand-ins. */
+  async function teacherTest(test: TestRow, moduleTitle: string): Promise<TestForTeacher> {
+    const { data: questionRows } = await client
+      .from('test_questions')
+      .select('id, position, kind, prompt, options, skill')
+      .eq('test_id', test.id)
+      .order('position')
+
+    const { count } = await client
+      .from('attempts')
+      .select('id', { count: 'exact', head: true })
+      .eq('test_id', test.id)
+      .not('submitted_at', 'is', null)
+
+    return {
+      id: test.id,
+      moduleId: test.module_id,
+      moduleTitle,
+      version: test.version,
+      status: test.status,
+      timeLimitMinutes: test.time_limit_minutes,
+      questions: ((questionRows ?? []) as QuestionRow[]).map(toQuestion),
+      handedIn: count ?? 0,
+    }
+  }
+
   /** Who is signed in, resolved from the tables rather than from the token. */
   async function viewer(): Promise<Viewer | null> {
     const { data: auth } = await client.auth.getUser()
@@ -359,6 +403,122 @@ export function createSupabaseRepo(client: SupabaseClient): PulseRepo {
           })
         }
         return out
+      },
+
+      async test(moduleId) {
+        await requireMaster()
+        const { data: mod } = await client.from('modules').select('title').eq('id', moduleId).maybeSingle()
+        if (!mod) throw new PulseError('NOT_AUTHORISED')
+
+        const { data: rows, error } = await client
+          .from('tests')
+          .select('id, module_id, version, status, time_limit_minutes')
+          .eq('module_id', moduleId)
+          .order('version', { ascending: false })
+        if (error) fail(error, new PulseError('UNKNOWN'))
+
+        const tests = (rows ?? []) as TestRow[]
+        // The draft being written wins; otherwise what the class can see.
+        const test = tests.find((t) => t.status === 'draft') ?? tests.find((t) => t.status === 'published')
+        return test ? teacherTest(test, (mod as Row).title as string) : null
+      },
+
+      async createDraft(moduleId) {
+        await requireMaster()
+        const { data: mod } = await client.from('modules').select('title').eq('id', moduleId).maybeSingle()
+        if (!mod) throw new PulseError('NOT_AUTHORISED')
+
+        const { data: rows } = await client
+          .from('tests')
+          .select('id, module_id, version, status, time_limit_minutes')
+          .eq('module_id', moduleId)
+        const existing = (rows ?? []) as TestRow[]
+        if (existing.some((t) => t.status === 'draft')) throw new PulseError('TEST_ALREADY_DRAFTED')
+
+        const { data, error } = await client
+          .from('tests')
+          .insert({
+            module_id: moduleId,
+            version: Math.max(0, ...existing.map((t) => t.version)) + 1,
+            status: 'draft',
+          })
+          .select('id, module_id, version, status, time_limit_minutes')
+          .single()
+        if (error) fail(error, new PulseError('UNKNOWN'))
+        return teacherTest(data as TestRow, (mod as Row).title as string)
+      },
+
+      async addQuestion(testId, question) {
+        await requireMaster()
+        const checked = checkedQuestion(question)
+        const { count } = await client
+          .from('test_questions')
+          .select('id', { count: 'exact', head: true })
+          .eq('test_id', testId)
+
+        const { data, error } = await client
+          .from('test_questions')
+          .insert({
+            test_id: testId,
+            position: (count ?? 0) + 1,
+            kind: checked.kind,
+            prompt: checked.prompt,
+            options: checked.options,
+            skill: checked.skill,
+          })
+          .select('id, position, kind, prompt, options, skill')
+          .single()
+        if (error) fail(error, new PulseError('TEST_FROZEN'))
+        return toQuestion(data as QuestionRow)
+      },
+
+      async updateQuestion(questionId, question) {
+        await requireMaster()
+        const checked = checkedQuestion(question)
+        const { data, error } = await client
+          .from('test_questions')
+          .update({
+            kind: checked.kind,
+            prompt: checked.prompt,
+            options: checked.options,
+            skill: checked.skill,
+          })
+          .eq('id', questionId)
+          .select('id, position, kind, prompt, options, skill')
+          .single()
+        if (error) fail(error, new PulseError('TEST_FROZEN'))
+        return toQuestion(data as QuestionRow)
+      },
+
+      async removeQuestion(questionId) {
+        await requireMaster()
+        const { error } = await client.from('test_questions').delete().eq('id', questionId)
+        if (error) fail(error, new PulseError('TEST_FROZEN'))
+      },
+
+      async publish(testId) {
+        await requireMaster()
+        const { count } = await client
+          .from('test_questions')
+          .select('id', { count: 'exact', head: true })
+          .eq('test_id', testId)
+        if ((count ?? 0) === 0) throw new PulseError('TEST_EMPTY')
+
+        const { data: draft } = await client.from('tests').select('module_id').eq('id', testId).maybeSingle()
+        const moduleId = (draft as Row | null)?.module_id as string | undefined
+
+        // One published test per module (the database holds a partial unique
+        // index on it): the previous version closes before this one opens.
+        if (moduleId) {
+          await client
+            .from('tests')
+            .update({ status: 'closed' })
+            .eq('module_id', moduleId)
+            .eq('status', 'published')
+        }
+
+        const { error } = await client.from('tests').update({ status: 'published' }).eq('id', testId)
+        if (error) fail(error, new PulseError('TEST_FROZEN'))
       },
 
       async rawResults(moduleId) {
