@@ -14,7 +14,10 @@ const forced = import.meta.env.VITE_DATA_SOURCE
 
 export const usingFakeData = forced === 'fake' || supabase === null
 
-export const repo: PulseRepo = usingFakeData ? createFakeRepo() : createSupabaseRepo(supabase!)
+// The running app keeps its demo across a refresh; tests always start clean.
+export const repo: PulseRepo = usingFakeData
+  ? createFakeRepo(undefined, { persist: true })
+  : createSupabaseRepo(supabase!)
 
 export * from './types'
 export type { PulseRepo } from './repo'

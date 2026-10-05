@@ -67,8 +67,35 @@ const questionsOf = (testId: string): Question[] =>
     .sort((a, b) => a.position - b.position)
     .map(({ id, position, kind, prompt, options, skill }) => ({ id, position, kind, prompt, options, skill }))
 
-export function createFakeRepo(initial?: Partial<FakeState>): PulseRepo & { state: FakeState } {
-  const state: FakeState = { ...freshState(), ...initial }
+/** Where a persisted demo lives. Per browser, never shared, never read by Claude. */
+const STORAGE_KEY = 'pulse.fake.v1'
+
+function readStored(): Partial<FakeState> | null {
+  try {
+    const raw = globalThis.localStorage?.getItem(STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as Partial<FakeState>) : null
+  } catch {
+    return null // private mode, blocked storage, or a shape we no longer understand
+  }
+}
+
+export function createFakeRepo(
+  initial?: Partial<FakeState>,
+  options?: { persist?: boolean },
+): PulseRepo & { state: FakeState } {
+  // Persistence is opt-in: the app asks for it so a refresh mid-demo keeps the
+  // session and the answers; tests never do, so they start from a clean class.
+  const stored = options?.persist ? readStored() : null
+  const state: FakeState = { ...freshState(), ...stored, ...initial }
+
+  const remember = () => {
+    if (!options?.persist) return
+    try {
+      globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(state))
+    } catch {
+      /* a demo that cannot be saved still works for this visit */
+    }
+  }
 
   const requireViewer = (): Viewer => {
     const v = state.viewerEmail ? viewerFor(state.viewerEmail) : null
@@ -140,6 +167,7 @@ export function createFakeRepo(initial?: Partial<FakeState>): PulseRepo & { stat
         const viewer = viewerFor(email)
         if (!viewer) throw new PulseError('NO_PROFILE')
         state.viewerEmail = lower(email)
+        remember()
         return viewer
       },
       async claimProfile(email, password) {
@@ -151,6 +179,7 @@ export function createFakeRepo(initial?: Partial<FakeState>): PulseRepo & { stat
         }
         state.accounts.push({ email: lower(email), password })
         state.viewerEmail = lower(email)
+        remember()
         return viewer
       },
       async requestPasswordReset() {
@@ -158,6 +187,7 @@ export function createFakeRepo(initial?: Partial<FakeState>): PulseRepo & { stat
       },
       async signOut() {
         state.viewerEmail = null
+        remember()
       },
     },
 
@@ -217,6 +247,7 @@ export function createFakeRepo(initial?: Partial<FakeState>): PulseRepo & { stat
           submittedAt: null,
         }
         state.attempts.push(attempt)
+        remember()
         return attempt
       },
 
@@ -244,12 +275,14 @@ export function createFakeRepo(initial?: Partial<FakeState>): PulseRepo & { stat
             studentProfileId: attempt.studentProfileId,
             response,
           })
+        remember()
       },
 
       async handIn(attemptId) {
         const viewer = requireStudent()
         const attempt = openAttempt(attemptId, viewer.profileIds)
         attempt.submittedAt = new Date().toISOString()
+        remember()
         return attempt
       },
     },

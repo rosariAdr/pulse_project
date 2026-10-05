@@ -205,3 +205,23 @@ describe('what the teacher reads', () => {
     expect(stat.testStatus).toBe('published')
   })
 })
+
+describe('the demo survives a refresh', () => {
+  it('reloads the session and the answers when persistence is on', async () => {
+    const first = createFakeRepo(undefined, { persist: true })
+    await first.auth.signIn(LEA, DEMO_PASSWORD)
+    const attempt = await first.student.startAttempt(STAT)
+    const [q1] = (await first.student.test(STAT))!.questions
+    await first.student.saveAnswer(attempt.id, q1.id, 'written before the refresh')
+
+    // A new tab, a reload, a phone that went to sleep: same browser, same demo.
+    const second = createFakeRepo(undefined, { persist: true })
+    expect((await second.auth.current())?.email).toBe(LEA)
+    expect((await second.student.test(STAT))!.answers[q1.id]).toBe('written before the refresh')
+  })
+
+  it('keeps tests isolated: without persistence nothing is remembered', async () => {
+    const isolated = createFakeRepo()
+    expect(await isolated.auth.current()).toBeNull()
+  })
+})

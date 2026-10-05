@@ -4,6 +4,8 @@ import { HandedIn } from '../features/student/HandedIn'
 import { ModulePage } from '../features/student/ModulePage'
 import { MyModules } from '../features/student/MyModules'
 import { TestRun } from '../features/student/TestRun'
+import { RawResults } from '../features/teacher/RawResults'
+import { TeacherModules } from '../features/teacher/TeacherModules'
 import { en } from '../i18n/en'
 import { Shell } from './Shell'
 import { useSession } from './session'
@@ -40,7 +42,9 @@ export function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="*" element={<Navigate to="/modules" replace />} />
+      <Route path="/teacher" element={<Shell title={en.nav.myModules}><TeacherModules /></Shell>} />
+      <Route path="/teacher/:moduleId" element={<Shell title={en.nav.rawResults}><RawResults /></Shell>} />
+      <Route path="*" element={<Navigate to="/teacher" replace />} />
     </Routes>
   )
 }
