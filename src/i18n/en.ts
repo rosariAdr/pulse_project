@@ -47,6 +47,34 @@ export const en = {
     draft: "Draft",
     published: "Published",
     prepared: "Prepared",
+    closed: "Closed",
+    noTest: "No test",
+  },
+  teacher: {
+    modulesTitle: "Modules",
+    modulesIntro: "The modules you teach, with the state of each entrance test.",
+    modulesEmpty: "No module yet. Create one, then attach a class to it.",
+    loading: "Loading…",
+    sessions: (n: number) => `${n} session${n === 1 ? "" : "s"}`,
+    students: (n: number) => `${n} student${n === 1 ? "" : "s"}`,
+    noClass: "No class attached yet",
+    handedInCount: (done: number, total: number) => `${done} of ${total} handed in`,
+    rawResultsNote:
+      "Exactly what each student wrote. No score, no ranking, no class average — you read the answers.",
+    view: "View",
+    byQuestion: "By question",
+    byStudent: "By student",
+    student: "Student",
+    questionShort: (n: number) => `Q${n}`,
+    questionLong: (n: number) => `Question ${n}`,
+    noAnswer: "No answer",
+    notHandedIn: "Not handed in",
+    noTestYet: "This module has no entrance test yet. Create the test to collect answers.",
+    noStudents: "No class is attached to this module yet, so there is nobody to read.",
+    nobodyAnswered: "Nobody has answered yet. The roster is below so you can see who is missing.",
+    fullAnswers: (name: string) => `${name} — every answer`,
+    showAnswers: (name: string) => `Show every answer by ${name}`,
+    answersTable: "One row per student, one column per question. Open a row for the full answers.",
   },
   common: {
     save: "Save",
@@ -61,9 +89,34 @@ export const en = {
 
 export type Strings = typeof en;
 
-// Maps database error codes raised by the triggers to interface messages.
+// What the student or teacher reads when the data layer refuses something.
+// The keys are PulseErrorCode (src/data/types.ts); every refusal has a sentence,
+// because a silent failure in class is worse than a blunt one.
+export const errorMessages = {
+  NO_PROFILE: en.door.noProfile,
+  BAD_CREDENTIALS: "That email and password do not match.",
+  ATTEMPT_CLOSED: "You have already handed this test in, so it can no longer change.",
+  ATTEMPT_EXISTS: "You have already started this test.",
+  TEST_NOT_AVAILABLE: "This test is not open.",
+  TIME_UP: "The time for this test has run out. Your saved answers were kept.",
+  ANSWER_TOO_LONG: "That answer is too long. Shorten it and it will save.",
+  TEST_FROZEN: "This test is published, so it can no longer change. Publish a new version instead.",
+  TEST_EMPTY: "Add at least one question before publishing.",
+  TEST_ALREADY_DRAFTED: "There is already a draft for this module.",
+  QUESTION_INCOMPLETE: "This question is not complete yet.",
+  NOT_AUTHORISED: "You cannot do that.",
+  UNKNOWN: en.common.error,
+} as const;
+
+export function messageForError(code: keyof typeof errorMessages): string {
+  return errorMessages[code] ?? en.common.error;
+}
+
+// Trigger names, for the rare path where a raw database message surfaces.
 export function messageForDbError(message: string): string {
   if (message.includes("PULSE_NO_PROFILE")) return en.door.noProfile;
   if (message.includes("PULSE_REPORT_FROZEN")) return en.exercise.frozen;
+  if (message.includes("PULSE_ATTEMPT_CLOSED")) return errorMessages.ATTEMPT_CLOSED;
+  if (message.includes("PULSE_TIME_UP")) return errorMessages.TIME_UP;
   return en.common.error;
 }
