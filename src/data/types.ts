@@ -124,6 +124,7 @@ export type PulseErrorCode =
   | 'TEST_EMPTY' // nothing to publish yet
   | 'TEST_ALREADY_DRAFTED'
   | 'QUESTION_INCOMPLETE'
+  | 'RESET_LINK_INVALID' // the reset link expired, was used, or was opened elsewhere
   | 'NOT_AUTHORISED'
   | 'UNKNOWN'
 

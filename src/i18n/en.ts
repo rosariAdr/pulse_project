@@ -13,6 +13,11 @@ export const en = {
     sendReset: "Send me a reset link",
     resetSent: "If this email has a Pulse profile, a reset link is on its way.",
     noProfile: "This email has no Pulse profile. Check the address your teacher registered, or ask them.",
+    newPassword: "New password",
+    setNewPassword: "Set my new password",
+    passwordChanged: "Your password is changed. Use it from now on.",
+    continue: "Continue",
+    passwordTooShort: (min: number) => `Choose a password of at least ${min} characters.`,
   },
   nav: {
     home: "Home",
@@ -104,6 +109,7 @@ export const errorMessages = {
   TEST_EMPTY: "Add at least one question before publishing.",
   TEST_ALREADY_DRAFTED: "There is already a draft for this module.",
   QUESTION_INCOMPLETE: "This question is not complete yet.",
+  RESET_LINK_INVALID: "This reset link has expired or was already used. Ask for a new one from the sign-in page.",
   NOT_AUTHORISED: "You cannot do that.",
   UNKNOWN: en.common.error,
 } as const;

@@ -40,7 +40,7 @@ export function DoorScreen() {
     setNotice(null)
 
     if (mode === 'claim' && password.length < MIN_PASSWORD) {
-      setError(`Choose a password of at least ${MIN_PASSWORD} characters.`)
+      setError(en.door.passwordTooShort(MIN_PASSWORD))
       return
     }
 

@@ -245,6 +245,15 @@ export function createSupabaseRepo(client: SupabaseClient): PulseRepo {
         })
       },
 
+      async updatePassword(password) {
+        // The reset link signs the person in with a recovery session; without
+        // one, Supabase answers "Auth session missing".
+        const { error } = await client.auth.updateUser({ password })
+        if (!error) return
+        if (/session/i.test(error.message)) throw new PulseError('RESET_LINK_INVALID')
+        fail(error, new PulseError('UNKNOWN'))
+      },
+
       async signOut() {
         await client.auth.signOut()
       },
