@@ -1,5 +1,5 @@
 # Every pull request, and every push to dev or main: the three test layers.
-#   app       lint + types + unit/component tests (vitest) + build
+#   app       lint + secret scan + types + unit/component tests (vitest) + build
 #   e2e       the journeys in a real browser, laptop and phone (Playwright)
 #   database  the data rules (pgTAP) — the only place RLS is proven
 name: CI
@@ -20,6 +20,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
+      - run: npm run check:secrets
       - run: npm run typecheck
       - run: npm test
       - run: npm run build

@@ -9,12 +9,16 @@ import { defineConfig, devices } from '@playwright/test'
  * job of supabase/tests/*.sql.
  *
  * The student journey is checked on a phone as well as a laptop, because that
- * is where it will actually be used: 25 students, in class, on their own
- * phones.
+ * is where it will actually be used.
  */
+
+// Parallel runs (one per agent worktree) each take their own port, so a run
+// never tests another worktree's build through `reuseExistingServer`.
+const PORT = Number(process.env.E2E_PORT ?? 4173)
+const BASE = `http://127.0.0.1:${PORT}`
+
 export default defineConfig({
   testDir: './e2e',
-  // A failing journey must be a real failure, not a slow machine.
   timeout: 30_000,
   expect: { timeout: 7_000 },
   fullyParallel: true,
@@ -24,7 +28,7 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
 
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: BASE,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -38,9 +42,9 @@ export default defineConfig({
 
   // The built app, not the dev server: what students will actually load.
   webServer: {
-    command: 'npm run build && npm run preview -- --port 4173 --host 127.0.0.1',
-    url: 'http://127.0.0.1:4173',
-    reuseExistingServer: !process.env.CI,
+    command: `npm run build && npm run preview -- --port ${PORT} --host 127.0.0.1`,
+    url: BASE,
+    reuseExistingServer: !process.env.CI && !process.env.E2E_PORT,
     timeout: 120_000,
     env: { VITE_DATA_SOURCE: 'fake' },
   },

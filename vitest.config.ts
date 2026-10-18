@@ -9,7 +9,7 @@ export default defineConfig({
     globals: false,
     css: false,
     // Unit and component tests only. The e2e/ folder belongs to Playwright.
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.test.mjs'],
+    exclude: ['e2e/**', 'node_modules/**', 'dist/**', '**/*.integration.test.ts'],
   },
 })
