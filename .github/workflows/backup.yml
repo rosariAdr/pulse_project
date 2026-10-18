@@ -3,10 +3,16 @@
 # the runner (it contains student personal data — RGPD), kept 30 days as a
 # workflow artifact. Rehearse one restore before the pilot (board task).
 #
+# The repository is public (decided 18 Oct 2026), so anyone with a GitHub
+# account can download these artifacts: the GPG passphrase is the only thing
+# protecting the dump. The job therefore refuses to run without it — it fails
+# loudly rather than skipping quietly or uploading anything weakly protected.
+#
 # Secrets:
 #   SUPABASE_DB_URL_PROD   the *Session pooler* connection string (IPv4) from
-#                          Project Settings → Database, with the password
-#   BACKUP_PASSPHRASE      a long passphrase, kept by both founders offline
+#                          pulse-prod → Connect, with the database password
+#   BACKUP_PASSPHRASE      a long passphrase, kept by both founders in their
+#                          password managers (GitHub never shows it again)
 #
 # Restore (on a fresh project):
 #   gpg -d backup.tar.gpg | tar x
@@ -23,28 +29,54 @@ jobs:
   dump:
     runs-on: ubuntu-latest
     steps:
+      # Before anything touches the database: both secrets, or a red run.
+      # A green run that did nothing is how prod went unbacked-up until now.
+      - name: Check the secrets are set
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL_PROD }}
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          missing=""
+          [ -z "$DB_URL" ] && missing="$missing SUPABASE_DB_URL_PROD"
+          [ -z "$PASS" ] && missing="$missing BACKUP_PASSPHRASE"
+          if [ -n "$missing" ]; then
+            echo "::error::Backup refused — missing secret(s):$missing. Prod is NOT being backed up."
+            exit 1
+          fi
+          if [ "${#PASS}" -lt 20 ]; then
+            echo "::error::Backup refused — BACKUP_PASSPHRASE is shorter than 20 characters. The repository is public: use a long passphrase."
+            exit 1
+          fi
+
       - uses: supabase/setup-cli@v1
         with:
           version: latest
+
       - name: Dump roles, schema and data
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL_PROD }}
         run: |
-          if [ -z "$DB_URL" ]; then echo "SUPABASE_DB_URL_PROD not set — skipping"; exit 0; fi
           supabase db dump --db-url "$DB_URL" -f roles.sql --role-only
           supabase db dump --db-url "$DB_URL" -f schema.sql
           supabase db dump --db-url "$DB_URL" -f data.sql --data-only --use-copy
+
       - name: Encrypt
-        if: ${{ hashFiles('data.sql') != '' }}
         env:
           PASS: ${{ secrets.BACKUP_PASSPHRASE }}
         run: |
           tar cf backup.tar roles.sql schema.sql data.sql
           gpg --batch --yes --pinentry-mode loopback --passphrase "$PASS" --symmetric --cipher-algo AES256 -o backup.tar.gpg backup.tar
           rm -f backup.tar roles.sql schema.sql data.sql
+          # Only the encrypted file may leave the runner.
+          test -s backup.tar.gpg
+          if ls ./*.sql ./backup.tar >/dev/null 2>&1; then
+            echo "::error::Plain dump still present after encryption — refusing to upload."
+            exit 1
+          fi
+
       - uses: actions/upload-artifact@v4
-        if: ${{ hashFiles('backup.tar.gpg') != '' }}
         with:
           name: pulse-prod-backup-${{ github.run_id }}
           path: backup.tar.gpg
           retention-days: 30
+          if-no-files-found: error
