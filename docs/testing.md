@@ -12,6 +12,14 @@ pull request; none of them needs a Supabase project or a secret.
 
 `npm run test:all` runs the JavaScript layers in order.
 
+`npm run verify` runs every local check except the browser and the database:
+lint, types, unit and component tests, the secret scan, the build. It is what
+"green" means before a pull request.
+
+**The secret scan** (`npm run check:secrets`) fails when a tracked file holds a
+`service_role` key, a Supabase secret key, a remote database password, or an env
+file. It prints the file and line, never the value. CI runs it on every PR.
+
 ## What each layer is for
 
 **The database tests are the ones that matter most.** Own-results-only is a
