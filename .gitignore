@@ -40,3 +40,6 @@ supabase/.branches
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Agent worktrees (workflow runs)
+.claude/worktrees/
