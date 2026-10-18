@@ -1,5 +1,6 @@
-import { Navigate, Route, Routes } from 'react-router'
+import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { DoorScreen } from '../features/door/DoorScreen'
+import { ResetPasswordScreen } from '../features/door/ResetPasswordScreen'
 import { HandedIn } from '../features/student/HandedIn'
 import { ModulePage } from '../features/student/ModulePage'
 import { MyModules } from '../features/student/MyModules'
@@ -18,6 +19,7 @@ import { useSession } from './session'
  */
 export function AppRoutes() {
   const { viewer, loading } = useSession()
+  const { pathname } = useLocation()
 
   if (loading) {
     return (
@@ -26,6 +28,10 @@ export function AppRoutes() {
       </main>
     )
   }
+
+  // The reset link signs the person in for one thing only: choosing a password.
+  // Without this, a recovery session would carry them straight to their modules.
+  if (pathname === '/reset-password') return <ResetPasswordScreen />
 
   if (!viewer) return <DoorScreen />
 

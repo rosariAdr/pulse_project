@@ -246,6 +246,12 @@ export function createFakeRepo(
       async requestPasswordReset() {
         // Deliberately silent about whether the email exists.
       },
+      async updatePassword(password) {
+        const account = state.viewerEmail ? state.accounts.find((a) => a.email === state.viewerEmail) : undefined
+        if (!account) throw new PulseError('RESET_LINK_INVALID', 'Open the link from the email again.')
+        account.password = password
+        remember()
+      },
       async signOut() {
         state.viewerEmail = null
         remember()

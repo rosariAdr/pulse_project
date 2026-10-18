@@ -31,6 +31,8 @@ export interface PulseRepo {
     claimProfile(email: string, password: string): Promise<Viewer>
     /** Always resolves: never reveal whether an email exists. */
     requestPasswordReset(email: string): Promise<void>
+    /** Sets a new password for whoever the reset link signed in. RESET_LINK_INVALID when nobody is. */
+    updatePassword(password: string): Promise<void>
     signOut(): Promise<void>
   }
 

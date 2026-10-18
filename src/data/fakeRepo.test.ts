@@ -225,3 +225,18 @@ describe('the demo survives a refresh', () => {
     expect(await isolated.auth.current()).toBeNull()
   })
 })
+
+describe('choosing a new password', () => {
+  it('sets a new password for whoever the reset link signed in', async () => {
+    await repo.auth.signIn(LEA, DEMO_PASSWORD)
+    await repo.auth.updatePassword('a-brand-new-password')
+    await repo.auth.signOut()
+
+    expect(await codeOf(() => repo.auth.signIn(LEA, DEMO_PASSWORD))).toBe('BAD_CREDENTIALS')
+    expect((await repo.auth.signIn(LEA, 'a-brand-new-password')).email).toBe(LEA)
+  })
+
+  it('refuses when nobody is signed in — the link expired or was used', async () => {
+    expect(await codeOf(() => repo.auth.updatePassword('a-brand-new-password'))).toBe('RESET_LINK_INVALID')
+  })
+})
