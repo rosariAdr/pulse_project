@@ -417,7 +417,7 @@ ${SHELL_SETUP}
 - \`gh auth status\` — logged in.
 - \`git fetch origin\` — origin/dev exists; the working tree of this checkout is clean.
 ${needsDb ? '- Docker is running and `npx supabase status` lists an API URL (this wave needs the local stack).' : ''}
-- .env.local exists and \`grep -c "VITE_SUPABASE_URL=." .env.local\` and \`grep -c "VITE_SUPABASE_ANON_KEY=." .env.local\` are 1; \`grep -ci "service_role" .env.local\` is 0. Never print the file.
+- .env.local exists and \`grep -c "VITE_SUPABASE_URL=." .env.local\` and \`grep -c "VITE_SUPABASE_ANON_KEY=." .env.local\` are 1; outside comment lines no service-role or secret key is set: \`grep -vE "^[[:space:]]*#" .env.local | grep -ciE "service_role|sb_secret_"\` is 0 (the template's own warning comment mentions service_role; comments do not count). Never print the file.
 ${wave === 1 ? `- decisionLogApproved is ${approved}. If false, that is a blocker: Adrian approves Appendix A of the plan first.` : ''}
 ${PREVIOUS[waveKey].length ? `- Previous tasks merged into dev: for each branch of ${JSON.stringify(PREVIOUS[waveKey].map((id) => TASKS[id].branch))}, \`gh pr list --base dev --state merged --head <branch>\` returns one PR.
 - The latest CI run on dev (\`gh run list --workflow ci.yml --branch dev --limit 1\`) concluded success.` : ''}
