@@ -32,14 +32,19 @@ const TASKS = {
 
 // Each wave is a list of steps; tasks inside a step run in parallel, steps run in order.
 const WAVES = {
-  1: [[1], [2, 3]],
+  // Task 1 (CI green on dev) was done on 18 Oct — dev 988bf9f, all three jobs green.
+  1: [[2, 3]],
   2: [[4, 5]],
   3: [[6]],
   4: [[7], [8]],
 }
-const PREVIOUS = { 1: [], 2: [1, 2, 3], 3: [1, 2, 3, 4, 5], 4: [1, 2, 3, 4, 5, 6] }
+const PREVIOUS = { 1: [], 2: [2, 3], 3: [2, 3, 4, 5], 4: [2, 3, 4, 5, 6] }
+
+// gh and Docker were installed after the app started: their folders are not on the inherited PATH.
+const SHELL_SETUP = 'Before any command, run: export PATH="$PATH:/c/Program Files/GitHub CLI:/c/Program Files/Docker/Docker/resources/bin"'
 
 const GUARDRAILS = `
+${SHELL_SETUP}
 Non-negotiable for this work (the plan's Global Constraints, in full in ${PLAN}):
 - Work on your branch, cut from origin/dev; PRs go into dev. Never push or merge to main. Never force-push. Never delete a branch. Never change GitHub, Vercel or Supabase settings.
 - Never read, print, use or commit a service_role key or an sb_secret_ key. Check .env.local only with \`grep -c\`, never cat it.
@@ -403,12 +408,13 @@ phase('Preflight')
 const needsDb = WAVES[wave].flat().some((id) => TASKS[id].db)
 const preflight = await agent(
   `Preflight for wave ${wave} of ${PLAN}. Check, report, change nothing.
+${SHELL_SETUP}
 - \`gh auth status\` — logged in.
 - \`git fetch origin\` — origin/dev exists; the working tree of this checkout is clean.
 ${needsDb ? '- Docker is running and `npx supabase status` lists an API URL (this wave needs the local stack).' : ''}
 - .env.local exists and \`grep -c "VITE_SUPABASE_URL=." .env.local\` and \`grep -c "VITE_SUPABASE_ANON_KEY=." .env.local\` are 1; \`grep -ci "service_role" .env.local\` is 0. Never print the file.
 ${wave === 1 ? `- decisionLogApproved is ${approved}. If false, that is a blocker: Adrian approves Appendix A of the plan first.` : ''}
-${PREVIOUS[wave].length ? `- Previous tasks merged into dev: for each branch of ${JSON.stringify(PREVIOUS[wave].map((id) => TASKS[id].branch))}, \`gh pr list --base dev --state merged --head <branch>\` returns one PR — except task 1 (fix/ci-green), which may have had nothing to change.
+${PREVIOUS[wave].length ? `- Previous tasks merged into dev: for each branch of ${JSON.stringify(PREVIOUS[wave].map((id) => TASKS[id].branch))}, \`gh pr list --base dev --state merged --head <branch>\` returns one PR.
 - The latest CI run on dev (\`gh run list --workflow ci.yml --branch dev --limit 1\`) concluded success.` : ''}
 - No open PR already exists for the branches of this wave: ${JSON.stringify(WAVES[wave].flat().filter((id) => TASKS[id].branch).map((id) => TASKS[id].branch))}.
 ready = no blockers.`,
