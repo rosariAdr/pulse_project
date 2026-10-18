@@ -8,9 +8,9 @@ A teacher-owned pre/post-class diagnostic for higher education. *Pulse* is a wor
 
 The loop is **Diagnose → Teach → Reinforce → Remeasure**. V0 proves the first half on the founders' own classes:
 
-- Students take an **entrance test during the first class**, on their phones.
-- They see **only their own results**.
-- The teacher reads the **raw results**.
+- Students take an **entrance test during the first class**, on their phones, inside the module it belongs to.
+- They hand it in and see a confirmation — **no score, no results, nothing about anyone else** (V0).
+- The teacher reads the **raw results**: each student's answers, by question or by student, with a CSV export.
 
 There is no commercialization before extended real-world proof.
 
@@ -23,44 +23,23 @@ There is no commercialization before extended real-world proof.
 
 If code and these disagree, stop and flag it — never silently pick one. Anything Claude invents to fill a gap is tagged `💡 [Claude-proposed — to validate]` in docs/PRs.
 
-## V0 scope (framework v10) — build exactly this
+## V0 scope — the entrance-test loop (decided 20 Sep 2026) — build exactly this
 
 **The door**
-- Sign in.
-- First visit: create the account from a profile that **already exists**. The email is recognised and the student chooses a password.
-- Password reset.
+- Sign in · first visit: create the account from a profile that **already exists** (email recognised, password chosen) · password reset ("forgot" link **and** the new-password screen behind it).
 - No module link, no welcome email, no self-enrollment.
 
 **Student**
-- Home, My modules, Module page.
-- **Entrance test**: 15–20 min, one attempt, autosave and resume, a hand-in confirmation that shows no results. Handing it in unlocks the module.
-- **My results**: own results only, with general advice or a preview.
-- Session page: the teacher's materials and that session's exercises.
-- Exercises: answers go to raw results.
-- My progress.
+- My modules → module page → **entrance test** (one attempt, autosave and resume, questions in any order) → hand-in confirmation that shows **no results**.
 
-**Teacher** (in V0 this is a facet of the master account)
-- Home, My modules.
-- Create the entrance test, with draft / published states and versioning.
-- Set up the sessions.
-- Prepare a session: drop content, add exercises. Answers are optional.
-- **Raw results**: a per-class list of each student's answers, with CSV export.
+**Teacher** (a facet of the master account)
+- My modules · the **entrance-test builder** (multiple choice / short answer / judgment; draft → published; a published test is versioned, never edited) · **raw results** (by question, by student, CSV).
 
-**Master account** (the founders — the only role in V0)
-- Create modules (with a session count).
-- Create classes and their student profiles (name + email).
-- Attach classes to modules.
+**Master account**
+- Provisioning is a **script**, not screens: `scripts/provision.mjs` turns one CSV into SQL that a person reads and runs (`docs/provisioning.md`).
 
-**Not in V0** — don't build, don't stub visibly:
-- AI of any kind.
-- The publish check.
-- Feedback sum-up.
-- Companion chat (V1: predetermined Q&A).
-- Priced advice.
-- Separate teacher accounts.
-- Participation grade.
-- LTI.
-- Dark mode by default.
+**V1 — not in V0, don't build, don't stub visibly:** session pages and content · exercises · my results · my progress · master screens · feedback sum-up · companion Q&A · the publish check · priced advice · separate teacher accounts.
+**Later:** AI of any kind · participation grade · LTI.
 
 ## Stack & layout
 
@@ -81,8 +60,8 @@ src/
 supabase/
   migrations/           schema + RLS (v10 model) — every change is a new migration
   seed.sql              fictional demo class (dev only)
-  tests/rls.test.sql    pgTAP: the data rules, proven (36 assertions)
-.github/workflows/      ci.yml (lint + tsc + build + pgTAP on every PR) · keep-alive.yml · backup.yml
+  tests/*.test.sql      pgTAP: the data rules, proven
+.github/workflows/      ci.yml (app · e2e · database jobs) · keep-alive.yml · backup.yml
 design/                 approved Claude Design exports — implement FROM these, not from prose
 ```
 
@@ -139,18 +118,9 @@ The full spec is `src/ui/pulse-ui-kit/README.md` and `MOTION.md`. Design System 
 - **Glass.** Never put `opacity` < 1 or `filter` on an ancestor of a glass surface (it kills the blur). Use one blur per stack.
 - **Accessibility.** Text reaches 4.5:1 against the worst ground pixel. Honour reduced motion, reduced transparency and more contrast (already handled in tokens.css).
 
-## Build order (Build Plan, step 2)
+## Build order
 
-Work in this order:
-
-1. Data layer
-2. The door
-3. Student test journey
-4. Teacher module space
-5. Raw results
-6. Master screens
-
-Run each block against the seeded demo class. The founders' provisioning can be done by hand with the seed or provisioning script until the master screens exist.
+The loop is built (October 2026). What remains is in `docs/superpowers/plans/2026-10-18-v0-finish.md`, executed wave by wave by `.claude/workflows/pulse-v0-finish.js`.
 
 **Definition of done** for each task:
 - It works on the seeded demo class.
@@ -189,3 +159,5 @@ Run each block against the seeded demo class. The founders' provisioning can be 
 
 - **Pilot module(s)** and the real entrance test (Parv).
 - **Data-retention policy** and the student privacy notice: required before the first real pilot.
+- **Email confirmation in class**: students claim their account before the class, or in it (spec §6).
+- **A new test version after students took the previous one**: does it reopen the test for them?
