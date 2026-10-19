@@ -1,12 +1,13 @@
 # How Pulse is tested
 
-Four layers, each proving something the others cannot. All of them run on every
+Five layers, each proving something the others cannot. All of them run on every
 pull request; none of them needs a Supabase project or a secret.
 
 | Layer | Where | Proves | Command |
 |---|---|---|---|
 | **Data rules** | `supabase/tests/*.sql` (pgTAP) | Own-results-only, no self-enrollment, one attempt, frozen tests, the hardening fixes | `npm run db:test` |
 | **Unit** | `src/data/*.test.ts` (Vitest) | The repository contract: what each call allows and refuses | `npm test` |
+| **Integration** | `src/data/*.integration.test.ts` (Vitest, local Supabase) | The Supabase repository keeps the same contract as the in-memory one | `npm run test:integration` |
 | **Component** | `src/features/**/*.test.tsx` (Vitest + Testing Library) | A screen's behaviour: what a person sees and can do | `npm test` |
 | **End-to-end** | `e2e/*.spec.ts` (Playwright) | The journeys, in a real browser, on a laptop **and a phone** | `npm run test:e2e` |
 
@@ -32,6 +33,13 @@ a test in the same pull request.
 They run against the in-memory implementation, which imitates the database's
 rules so that a screen written against it behaves the same against the real one.
 The fake is a development double, never a security boundary.
+
+**The integration layer keeps the two implementations honest.** The scenarios
+in `src/data/contract/repoContract.ts` are written once and run twice: against
+the in-memory repo in the unit layer, and against `createSupabaseRepo` on the
+local stack (`npm run test:integration`, Docker needed; CI runs it in the
+database job, right after pgTAP). A scenario that passes on one and fails on
+the other is a bug in the implementation, never a reason to change the scenario.
 
 **The component tests cover one screen at a time** — the refusal shown after a
 hand-in, the question that can be revisited, the multiple choice that needs two
@@ -70,8 +78,8 @@ what students would actually load, not the dev server.
 
 ## What is not tested yet
 
-- **The Supabase implementation against a real project.** The repository has two
-  implementations; only the in-memory one is exercised by these tests. Until the
-  EU projects exist, `createSupabaseRepo` is unproven code.
+- **The hosted projects.** The contract runs against the local stack, which has
+  the same migrations; the dev and prod projects are checked by hand before a
+  class (runbook).
 - **Email confirmation**, a dashboard setting no test can assert.
 - **Accessibility** beyond roles and labels, and visual regression.
