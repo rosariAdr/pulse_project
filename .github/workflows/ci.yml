@@ -1,7 +1,8 @@
 # Every pull request, and every push to dev or main: the three test layers.
 #   app       lint + secret scan + types + unit/component tests (vitest) + build
 #   e2e       the journeys in a real browser, laptop and phone (Playwright)
-#   database  the data rules (pgTAP) — the only place RLS is proven
+#   database  the data rules (pgTAP) — the only place RLS is proven — then the
+#             repository contract against the same stack (integration)
 name: CI
 
 on:
@@ -56,5 +57,13 @@ jobs:
       - run: supabase start -x studio,imgproxy,inbucket,realtime,storage-api,edge-runtime,logflare,vector,supavisor,mailpit
       # Runs supabase/tests/*.sql with pgTAP — must stay 100% green.
       - run: supabase test db
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The repository contract against the same local stack. pgTAP rolled back
+      # its changes, so the seeded class is intact.
+      - run: npx vitest run -c vitest.integration.config.ts
       - if: failure()
         run: supabase status || true
