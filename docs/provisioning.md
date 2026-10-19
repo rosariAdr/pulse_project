@@ -35,6 +35,15 @@ node scripts/provision.mjs my-classes.csv > provision.sql
 It validates first and writes nothing if anything is wrong: a malformed address,
 a missing column, the same student twice in one class.
 
+**The first time on a project** (an empty prod), add each founder's master
+account with `--staff`, once per founder:
+`node scripts/provision.mjs --staff "Full Name <email>" --staff "Full Name <email>" my-classes.csv > provision.sql`.
+Sign-up is refused for any address without a staff or student row, so without
+it nobody can sign in as the master account. Type the real addresses on the
+command line only, never in a file in the repository. A founder who already has
+an account is skipped (`on conflict do nothing`), and the SQL refuses to run
+while the project has no master account (`PULSE_NO_MASTER`).
+
 ## 3. Read it, then run it
 
 Open `provision.sql`, check the class and student names, then paste it into the
