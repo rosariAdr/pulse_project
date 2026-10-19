@@ -228,13 +228,13 @@ export function createSupabaseRepo(client: SupabaseClient): PulseRepo {
 
       async claimProfile(email, password) {
         // The database trigger refuses any email without a pre-created profile.
-        const { error } = await client.auth.signUp({ email, password })
+        const { data, error } = await client.auth.signUp({ email, password })
         if (error) fail(error, new PulseError('NO_PROFILE'))
+        // Email confirmation is on (both projects): the account exists, but the
+        // session only follows once the student opens the link. A state, not a failure.
+        if (!data.session) throw new PulseError('CHECK_INBOX')
         const v = await viewer()
-        if (!v) {
-          // Email confirmation is on: the account exists but no session yet.
-          throw new PulseError('UNKNOWN', 'Check your inbox to confirm your address, then sign in.')
-        }
+        if (!v) throw new PulseError('UNKNOWN')
         return v
       },
 

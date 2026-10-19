@@ -121,7 +121,15 @@ function readStored(): Partial<FakeState> | null {
 
 export function createFakeRepo(
   initial?: Partial<FakeState>,
-  options?: { persist?: boolean },
+  options?: {
+    persist?: boolean
+    /**
+     * Imitates a project with email confirmation on (both real ones): claiming
+     * a profile creates the account but signs nobody in until the link is
+     * opened. Off by default, so the demo and the tests sign in straight away.
+     */
+    requireEmailConfirmation?: boolean
+  },
 ): PulseRepo & { state: FakeState } {
   // Persistence is opt-in: the app asks for it so a refresh mid-demo keeps the
   // session and the answers; tests never do, so they start from a clean class.
@@ -239,6 +247,11 @@ export function createFakeRepo(
           throw new PulseError('BAD_CREDENTIALS', 'This profile already has an account. Sign in instead.')
         }
         state.accounts.push({ email: lower(email), password })
+        if (options?.requireEmailConfirmation) {
+          // The account exists; the session waits for the confirmation link.
+          remember()
+          throw new PulseError('CHECK_INBOX', 'Open the confirmation link, then sign in.')
+        }
         state.viewerEmail = lower(email)
         remember()
         return viewer

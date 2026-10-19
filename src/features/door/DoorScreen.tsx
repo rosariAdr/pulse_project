@@ -53,7 +53,14 @@ export function DoorScreen() {
         setNotice(en.door.resetSent)
       }
     } catch (e) {
-      setError(e instanceof PulseError ? messageForError(e.code) : en.common.error)
+      if (e instanceof PulseError && e.code === 'CHECK_INBOX') {
+        // The account exists; the next step is the sign-in after the link. Keep the email.
+        setMode('signin')
+        setPassword('')
+        setNotice(messageForError(e.code))
+      } else {
+        setError(e instanceof PulseError ? messageForError(e.code) : en.common.error)
+      }
     } finally {
       setBusy(false)
     }

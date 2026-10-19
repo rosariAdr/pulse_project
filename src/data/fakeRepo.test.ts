@@ -36,6 +36,17 @@ describe('the door', () => {
     expect(await codeOf(() => repo.auth.claimProfile('stranger@nowhere.example', 'whatever-123'))).toBe('NO_PROFILE')
   })
 
+  it('creates the account but signs nobody in while the address is unconfirmed', async () => {
+    const AYA = 'a.benkirane@idrac.example'
+    const confirming = createFakeRepo(undefined, { requireEmailConfirmation: true })
+    // Aya exists as a profile; give her a brand new account.
+    confirming.state.accounts = confirming.state.accounts.filter((a) => a.email !== AYA)
+
+    expect(await codeOf(() => confirming.auth.claimProfile(AYA, 'a-good-password'))).toBe('CHECK_INBOX')
+    expect(await confirming.auth.current()).toBeNull()
+    expect((await confirming.auth.signIn(AYA, 'a-good-password')).name).toBe('Aya Benkirane')
+  })
+
   it('matches the profile email whatever the case', async () => {
     const viewer = await repo.auth.signIn('L.Fontaine@IDRAC.example', DEMO_PASSWORD)
     expect(viewer.email).toBe(LEA)
