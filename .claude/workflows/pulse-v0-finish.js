@@ -28,6 +28,7 @@ const TASKS = {
   6: { id: 6, title: 'Repository contract, proven against Supabase', branch: 'feat/repo-contract', kind: 'code', db: true, e2e: true },
   7: { id: 7, title: 'Pilot kit', branch: 'docs/pilot-kit', kind: 'docs', db: false, e2e: false },
   8: { id: 8, title: 'Final review and release readiness', kind: 'review' },
+  10: { id: 10, title: 'Check your inbox on the first visit', branch: 'fix/check-inbox', kind: 'code', db: false, e2e: true },
 }
 
 // Each wave is a list of steps; tasks inside a step run in parallel, steps run in order.
@@ -38,11 +39,12 @@ const WAVES = {
   // virtualization is off in the firmware of the dev machine).
   "2a": [[4, 7]], // reset-password screen + pilot kit — no database
   "2b": [[5]], // database coverage — needs the local stack
+  "2c": [[10]], // the first-visit bug found by the 19 Oct board audit — no database
   3: [[6]],
   4: [[8]],
 }
-const PREVIOUS = { 1: [], "2a": [2, 3], "2b": [2, 3], 3: [2, 3, 4, 5], 4: [2, 3, 4, 5, 6, 7] }
-const ORDER = ["1", "2a", "2b", "3", "4"]
+const PREVIOUS = { 1: [], "2a": [2, 3], "2b": [2, 3], "2c": [4], 3: [2, 3, 4, 5], 4: [2, 3, 4, 5, 6, 7, 10] }
+const ORDER = ["1", "2a", "2c", "2b", "3", "4"]
 
 // gh and Docker were installed after the app started: their folders are not on the inherited PATH.
 const SHELL_SETUP = 'Before any command, run: export PATH="$PATH:/c/Program Files/GitHub CLI:/c/Program Files/Docker/Docker/resources/bin"'
