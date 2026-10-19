@@ -70,9 +70,13 @@ select throws_ok(
 select throws_ok(
   $$ insert into tests (module_id) values ('00000000-0000-4000-8000-0000000000d1') $$,
   '42501', null, 'a student cannot create a test');
+-- Aimed at the draft test of section 3, not the published one: on a published
+-- test the freeze trigger fires before RLS (BEFORE ROW triggers run before
+-- WITH CHECK) and refuses everyone, master included, so it would not show that
+-- RLS keeps a student out. On a draft test, RLS is the only thing in the way.
 select throws_ok(
   $$ insert into test_questions (test_id, position, kind, prompt)
-     values ('00000000-0000-4000-8000-000000000201', 9, 'short', 'Planted question') $$,
+     values ('70000000-0000-4000-8000-000000000201', 9, 'short', 'Planted question') $$,
   '42501', null, 'a student cannot add a question to a test');
 
 select * from finish();
