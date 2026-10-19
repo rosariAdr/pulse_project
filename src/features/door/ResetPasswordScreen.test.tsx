@@ -51,4 +51,14 @@ describe('the new-password screen', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('expired or was already used')
   })
+
+  it('offers the way back to sign in when the link is no longer valid', async () => {
+    const { user } = await renderScreen({ signedIn: false })
+
+    await user.type(screen.getByLabelText('New password'), 'a-brand-new-password')
+    await user.click(screen.getByRole('button', { name: 'Set my new password' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('expired or was already used')
+    expect(screen.getByRole('link', { name: 'Back to sign in' })).toHaveAttribute('href', '/')
+  })
 })

@@ -87,4 +87,27 @@ describe('the door', () => {
       expect((await repo.auth.current())?.name).toBe('Aya Benkirane')
     })
   })
+
+  it('tells a student to check their inbox when the address must be confirmed first', async () => {
+    const repo = createFakeRepo(undefined, { requireEmailConfirmation: true })
+    repo.state.accounts = repo.state.accounts.filter((a) => a.email !== 'a.benkirane@idrac.example')
+    render(
+      <SessionProvider repo={repo}>
+        <DoorScreen />
+      </SessionProvider>,
+    )
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /first time here/i }))
+    await user.type(screen.getByLabelText(/school email/i), 'a.benkirane@idrac.example')
+    await user.type(screen.getByLabelText(/password/i), 'a-good-password')
+    await user.click(screen.getByRole('button', { name: /create my password/i }))
+
+    // A state, not a failure: said calmly, and the door is ready for the sign-in that follows.
+    expect(await screen.findByRole('status')).toHaveTextContent(/we sent a confirmation link/i)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^sign in$/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/school email/i)).toHaveValue('a.benkirane@idrac.example')
+    expect(screen.getByLabelText(/password/i)).toHaveValue('')
+  })
 })

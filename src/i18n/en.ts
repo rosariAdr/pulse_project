@@ -13,6 +13,8 @@ export const en = {
     sendReset: "Send me a reset link",
     resetSent: "If this email has a Pulse profile, a reset link is on its way.",
     noProfile: "This email has no Pulse profile. Check the address your teacher registered, or ask them.",
+    checkInbox: "Almost there: we sent a confirmation link to your school email. Open it, then sign in here.",
+    backToSignIn: "Back to sign in",
     newPassword: "New password",
     setNewPassword: "Set my new password",
     passwordChanged: "Your password is changed. Use it from now on.",
@@ -99,6 +101,7 @@ export type Strings = typeof en;
 // because a silent failure in class is worse than a blunt one.
 export const errorMessages = {
   NO_PROFILE: en.door.noProfile,
+  CHECK_INBOX: en.door.checkInbox, // a state, not a failure: the door shows it as a status
   BAD_CREDENTIALS: "That email and password do not match.",
   ATTEMPT_CLOSED: "You have already handed this test in, so it can no longer change.",
   ATTEMPT_EXISTS: "You have already started this test.",

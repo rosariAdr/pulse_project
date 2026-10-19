@@ -16,12 +16,14 @@ export function ResetPasswordScreen() {
   const { repo } = useSession()
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [linkInvalid, setLinkInvalid] = useState(false)
   const [done, setDone] = useState(false)
   const [busy, setBusy] = useState(false)
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
+    setLinkInvalid(false)
     if (password.length < MIN_PASSWORD) {
       setError(en.door.passwordTooShort(MIN_PASSWORD))
       return
@@ -32,6 +34,8 @@ export function ResetPasswordScreen() {
       setDone(true)
     } catch (e) {
       setError(e instanceof PulseError ? messageForError(e.code) : en.common.error)
+      // A dead link cannot be mended here: the way forward is a new one, asked for at the door.
+      setLinkInvalid(e instanceof PulseError && e.code === 'RESET_LINK_INVALID')
     } finally {
       setBusy(false)
     }
@@ -76,6 +80,14 @@ export function ResetPasswordScreen() {
             </form>
           )}
         </Card>
+
+        {linkInvalid && (
+          <nav className="flex flex-col items-center gap-2 text-sm">
+            <Link to="/" className="pl-btn pl-btn--ghost">
+              {en.door.backToSignIn}
+            </Link>
+          </nav>
+        )}
       </main>
     </div>
   )

@@ -114,6 +114,7 @@ export type RawResults = {
 /** Errors the interface promises, so screens can show a sentence rather than a stack trace. */
 export type PulseErrorCode =
   | 'NO_PROFILE' // the email has no pre-created profile (no self-enrollment)
+  | 'CHECK_INBOX' // a state, not a failure: the account exists, the address awaits its confirmation link
   | 'BAD_CREDENTIALS'
   | 'ATTEMPT_CLOSED' // already handed in
   | 'ATTEMPT_EXISTS' // one attempt per student per test
