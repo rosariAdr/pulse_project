@@ -29,6 +29,8 @@ const TASKS = {
   7: { id: 7, title: 'Pilot kit', branch: 'docs/pilot-kit', kind: 'docs', db: false, e2e: false },
   8: { id: 8, title: 'Final review and release readiness', kind: 'review' },
   10: { id: 10, title: 'Check your inbox on the first visit', branch: 'fix/check-inbox', kind: 'code', db: false, e2e: true },
+  11: { id: 11, title: "The founders' master accounts in provisioning", branch: 'feat/provision-staff', kind: 'code', db: false, e2e: false },
+  12: { id: 12, title: 'Small alignments (19 Oct)', branch: 'chore/align-1019', kind: 'code', db: false, e2e: true },
 }
 
 // Each wave is a list of steps; tasks inside a step run in parallel, steps run in order.
@@ -40,11 +42,14 @@ const WAVES = {
   "2a": [[4, 7]], // reset-password screen + pilot kit — no database
   "2b": [[5]], // database coverage — needs the local stack
   "2c": [[10]], // the first-visit bug found by the 19 Oct board audit — no database
+  // Everything left before the final review, with CI as the database (args.ciDb) while
+  // local Docker is not available. 2b and 3 remain the local-Docker route for 5 and 6.
+  "2d": [[5, 6, 11, 12]],
   3: [[6]],
   4: [[8]],
 }
-const PREVIOUS = { 1: [], "2a": [2, 3], "2b": [2, 3], "2c": [4], 3: [2, 3, 4, 5], 4: [2, 3, 4, 5, 6, 7, 10] }
-const ORDER = ["1", "2a", "2c", "2b", "3", "4"]
+const PREVIOUS = { 1: [], "2a": [2, 3], "2b": [2, 3], "2c": [4], "2d": [2, 3, 4, 10], 3: [2, 3, 4, 5], 4: [2, 3, 4, 5, 6, 7, 10, 11, 12] }
+const ORDER = ["1", "2a", "2c", "2d", "4"] // 2b and 3 stay valid: the local-Docker route for tasks 5 and 6
 
 // gh and Docker were installed after the app started: their folders are not on the inherited PATH.
 const SHELL_SETUP = 'Before any command, run: export PATH="$PATH:/c/Program Files/GitHub CLI:/c/Program Files/Docker/Docker/resources/bin"'
@@ -201,7 +206,17 @@ const withMerge = makeLock()
 const waveKey = String(args && args.wave)
 const wave = parseInt(waveKey, 10) // numeric stage, for the layer rules below
 const approved = Boolean(args && args.decisionLogApproved)
+// ciDb: no local Docker — the PR's CI `database` job (which has Docker) runs
+// pgTAP and the integration layer. Same guarantee, slower feedback.
+const CI_DB = Boolean(args && args.ciDb)
 const MAX_ROUNDS = 2
+
+const CI_DB_HOW = `
+No local Docker on this machine (ciDb mode): never run db:start, db:reset, db:test or test:integration locally.
+- Open the PR as a DRAFT as soon as your first test-first commit exists (\`gh pr create --draft --base dev --head <branch>\`), so CI runs on every push.
+- The PR's CI \`database\` job runs pgTAP (and, once ci.yml runs it, the integration layer). Wait with \`gh pr checks <pr> --watch\`; read a failure with \`gh run list --branch <branch> --limit 1\` then \`gh run view <run-id> --log-failed\`.
+- Showing a test failing first = a CI run where it fails, then one where it passes. Say which run ids in your summary.
+- Before returning, mark the PR ready: \`gh pr ready <pr>\`.`
 
 function taskText(t) {
   return `Task ${t.id} ("${t.title}") of ${PLAN}. Read that task section in full, the Global Constraints at the top of the plan, and the spec ${SPEC}.`
@@ -211,8 +226,12 @@ function layersFor(t) {
   const layers = ['npm ci', 'npm run lint', 'npm run typecheck', 'npm test', 'npm run build']
   if (t.id >= 3 || wave >= 2) layers.push('npm run check:secrets (if the script exists on this branch)')
   if (t.e2e) layers.push(`npx playwright test with E2E_PORT=${4300 + t.id * 10} (both projects)`)
-  if (t.db) layers.push('npm run db:reset && npm run db:test')
-  if (t.id === 6 || wave >= 3) layers.push('npm run test:integration (if the script exists on this branch)')
+  if (CI_DB) {
+    if (t.db) layers.push("the PR's CI database job green: `gh pr checks <pr> --watch` (pgTAP, and the integration layer once ci.yml runs it) — never locally")
+  } else {
+    if (t.db) layers.push('npm run db:reset && npm run db:test')
+    if (t.id === 6 || wave >= 3) layers.push('npm run test:integration (if the script exists on this branch)')
+  }
   return layers
 }
 
@@ -224,6 +243,8 @@ async function runTask(t) {
     `You implement ${taskText(t)}
 ${t.id === 2 ? `decisionLogApproved = ${approved}. Post Appendix A to the Notion Decision Log only if it is true.` : ''}
 ${t.kind === 'ci' ? 'If the latest CI run on origin/dev is already green after a re-run, change nothing and return status "nothing-to-do".' : ''}
+${CI_DB && t.db ? CI_DB_HOW : ''}
+${CI_DB && t.id === 6 ? 'For Task 6 in ciDb mode: do Step 7 (the CI job runs the integration layer) in your first commit, so every push tests the Supabase repository against the CI database. Then iterate on Step 6 through CI.' : ''}
 
 How:
 1. \`git fetch origin\` then \`git switch -C ${t.branch} origin/dev\`. Run \`npm ci\`.
@@ -337,7 +358,7 @@ ${GUARDRAILS}`,
   const merge = await withMerge(() =>
     agent(
       `Merge PR #${pr} into dev — only if it is safe.
-1. \`gh pr view ${pr} --json baseRefName,mergeable,state\`: the base must be "dev". If it is anything else, stop: merged=false.
+1. \`gh pr view ${pr} --json baseRefName,mergeable,state,isDraft\`: the base must be "dev". If it is anything else, stop: merged=false. If it is still a draft, \`gh pr ready ${pr}\`.
 2. If it is not mergeable (conflict with dev): \`git fetch origin\`, \`git switch -C ${t.branch} origin/${t.branch}\`, \`git merge origin/dev\`, resolve keeping both sides' intent, run ${layersFor(t).join(' · ')}, push. (Merging dev into the feature branch is fine. Never merge main anywhere.)
 3. \`gh pr checks ${pr} --watch --fail-fast\`. Every check must pass. If GitHub cannot run the checks (runners unavailable), stop: merged=false, and say so.
 4. \`gh pr merge ${pr} --merge\` (no --delete-branch, no --admin).
@@ -412,7 +433,7 @@ if (!WAVES[waveKey]) {
 }
 
 phase('Preflight')
-const needsDb = WAVES[waveKey].flat().some((id) => TASKS[id].db)
+const needsDb = !CI_DB && WAVES[waveKey].flat().some((id) => TASKS[id].db)
 const preflight = await agent(
   `Preflight for wave ${waveKey} of ${PLAN}. Check, report, change nothing.
 ${SHELL_SETUP}
