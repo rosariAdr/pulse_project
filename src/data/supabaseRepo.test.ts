@@ -5,9 +5,10 @@ import { PulseError } from './types'
 
 /**
  * Only the answers the local stack cannot give: email confirmation is off in
- * supabase/config.toml but on in both real projects. The client is a stand-in
- * for what Supabase Auth returns there; everything else in this file is
- * proven against a real database, not here.
+ * supabase/config.toml and on pulse-dev, and may be turned on in prod (decided
+ * before the first class). The client is a stand-in for what Supabase Auth
+ * returns when it is on. The rest of the Supabase repository is proven by the
+ * integration layer (Task 6 of the v0-finish plan), not here.
  */
 type SignUpAnswer = {
   data: { user: { id: string } | null; session: { access_token: string } | null }
