@@ -1,6 +1,6 @@
 # CLAUDE.md — Pulse
 
-> Bridge file between the Notion Second Brain and this repo. **Regenerate it whenever the Decision Log changes.** Generated 2026-10-03 from: Claude Operating Guide, Decision Log (newest entry 3 Oct 2026: design direction + V0 decisions), Roadmap, Build Plan V0, Website Documentation, Data Architecture, Page Framework v10.
+> Bridge file between the Notion Second Brain and this repo. **Regenerate it whenever the Decision Log changes.** Generated 2026-10-03, updated 19 Oct 2026 (V0 scope, email confirmation), from: Claude Operating Guide, Decision Log (newest entry 3 Oct 2026: design direction + V0 decisions), Roadmap, Build Plan V0, Website Documentation, Data Architecture, Page Framework v10.
 
 ## What Pulse is
 
@@ -149,15 +149,16 @@ The loop is built (October 2026). What remains is in `docs/superpowers/plans/202
 - Asset naming: `Subject_Level_Session_Topic_ExN` (e.g. `ExcelAdvanced_Bachelors_S3_PivotTables_Ex2`).
 - All demo data is fictional and labelled as such in the UI.
 
-## Decided for V0 (3 Oct 2026)
+## Decided (3–18 Oct 2026)
 
 - Interface language: **English** (see Content conventions).
-- Supabase: **Free plan** (see Stack & layout for the consequences).
-- Late exercise attempts: **count in the student's private progress** (see Data rules).
+- Supabase: **Free plan, two projects** — dev + prod (see Stack & layout for the consequences).
+- Late exercise attempts: **count in the student's private progress** (see Data rules) — this applies when exercises arrive in V1.
+- Email confirmation: **OFF on pulse-dev** (its fictional `.example` addresses can never confirm) **and not yet decided on prod** — it needs the Brevo SMTP first and must be decided before the first class.
 
 ## Still open (don't guess — ask)
 
 - **Pilot module(s)** and the real entrance test (Parv).
 - **Data-retention policy** and the student privacy notice: required before the first real pilot.
-- **Email confirmation in class**: students claim their account before the class, or in it (spec §6).
+- **Email confirmation on prod**: OFF on pulse-dev (fictional `.example` addresses can never confirm); not yet decided on prod — it needs the Brevo SMTP first and must be decided before the first class (spec §6).
 - **A new test version after students took the previous one**: does it reopen the test for them?

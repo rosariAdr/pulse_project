@@ -4,10 +4,9 @@ import { PulseError } from '../../data/types'
 import { en } from '../../i18n/en'
 import { messageForError } from '../../i18n/en'
 import { Button, Card, Ground, TextField } from '../../ui/pulse-ui-kit/react'
+import { MIN_PASSWORD } from './password'
 
 type Mode = 'signin' | 'claim' | 'reset'
-
-const MIN_PASSWORD = 8
 
 /**
  * The door. Three things and no more: sign in, create the account from a

@@ -4,8 +4,7 @@ import { useSession } from '../../app/session'
 import { PulseError } from '../../data/types'
 import { en, messageForError } from '../../i18n/en'
 import { Button, Card, Ground, TextField } from '../../ui/pulse-ui-kit/react'
-
-const MIN_PASSWORD = 8
+import { MIN_PASSWORD } from './password'
 
 /**
  * Where the reset link lands. The link signs the person in for one purpose —
