@@ -81,7 +81,7 @@ Environments follow the branches: **`main` → the prod Supabase project · `dev
 
 ## Tests
 
-Four layers, described in `docs/testing.md`: the data rules (pgTAP) · the repository (Vitest) · the screens (Vitest + Testing Library) · the journeys (Playwright, laptop **and** phone). The end-to-end tests run on the built app with `VITE_DATA_SOURCE=fake`, so they need no project and no secret.
+Five layers, described in `docs/testing.md`: the data rules (pgTAP) · the repository contract, run against the in-memory repo (Vitest) **and against local Supabase** (integration) · the screens (Testing Library) · the journeys (Playwright, laptop **and** phone). The end-to-end tests run on the built app with `VITE_DATA_SOURCE=fake`, so they need no project and no secret.
 
 Own-results-only is proven by the database tests and nowhere else — the in-memory repository imitates the rule so screens behave the same, but it is a development double, never a security boundary. Any change to RLS needs a migration **and** a test in the same pull request.
 
