@@ -125,15 +125,15 @@ select throws_ok(
   'P0001', null, 'a published test cannot be deleted — version it instead');
 
 -- --------------------------------------------- 7. anon stays out of new tables
--- Back to the owner: section 6 left us acting as the master, who cannot create
--- tables. A later migration is written by the owner, so the test must be too.
-reset role;
+-- Back to the owner, the same way rls.test.sql does it: a later migration is
+-- written by the owner, so the table must be too.
+select set_config('role', 'postgres', true), set_config('request.jwt.claims', '', true);
 create table public.later_table (id uuid primary key default gen_random_uuid());
-set role anon;
+select set_config('role', 'anon', true);
 select throws_ok(
   $$ select * from public.later_table $$,
   '42501', null, 'a table created by a later migration is not readable by anon');
-reset role;
+select set_config('role', 'postgres', true);
 
 select * from finish();
 rollback;

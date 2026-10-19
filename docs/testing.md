@@ -25,7 +25,7 @@ file. It prints the file and line, never the value. CI runs it on every PR.
 **The database tests are the ones that matter most.** Own-results-only is a
 property of the schema, not a promise of the interface: a student must not be
 able to read a classmate's answers even if every screen were rewritten
-tomorrow. That is why 54 pgTAP assertions exist, and why a change to RLS needs
+tomorrow. That is why 64 pgTAP assertions exist, and why a change to RLS needs
 a test in the same pull request.
 
 **The unit tests cover the repository**, the only place that talks to Supabase.
