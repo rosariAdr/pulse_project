@@ -220,3 +220,124 @@ describe('toSql', () => {
     expect(sql).toContain('values (v_class_2, v_module_1) on conflict do nothing;')
   })
 })
+
+// PU-03: the runbook's remedy on the day is "fix the CSV, regenerate the SQL,
+// run it". Running it a second time must find what the first run created and
+// add only what is missing — never a second class or a second module.
+describe('toSql, run again on the same project', () => {
+  const records = parseCsv(
+    csv(
+      row(),
+      row({ student_name: 'Yanis Cherif', student_email: 'y.cherif@idrac.example' }),
+      row({ class: 'M2-03', institution: 'ABS Paris', student_email: 'l.benali@abs.example', student_name: 'Lina Benali' }),
+    ),
+  )
+  const staff = [{ name: 'Adrian Rosari', email: 'adrian@pulse.example' }]
+
+  // Every insert in the generated SQL, as one line each, with whether it runs
+  // only after a lookup found nothing (inside `when no_data_found then`).
+  const inserts = (sql) => {
+    const found = []
+    let onlyWhenMissing = false
+    let statement = null
+    for (const line of sql.split('\n')) {
+      const text = line.trim()
+      if (text === 'when no_data_found then') onlyWhenMissing = true
+      else if (/^when .* then$/.test(text) || text === 'end;' || text === 'exception') onlyWhenMissing = false
+      if (statement === null && text.startsWith('insert into ')) statement = { text: '', onlyWhenMissing }
+      if (statement !== null) {
+        statement.text += (statement.text ? ' ' : '') + text
+        if (text.endsWith(';')) {
+          found.push(statement)
+          statement = null
+        }
+      }
+    }
+    return found
+  }
+  const runsTwice = (sql) =>
+    inserts(sql)
+      .filter((s) => !s.onlyWhenMissing && !/ on conflict( \([^)]*\))? do nothing;$/.test(s.text))
+      .map((s) => s.text)
+
+  it('has no insert that a second run would repeat', () => {
+    const sql = toSql({ records, staff })
+    // A sanity check that the helper sees the inserts at all, so the empty
+    // list below cannot pass on a parser that finds nothing.
+    expect(inserts(sql).map((s) => s.text.split(' (')[0])).toEqual([
+      'insert into public.staff_accounts',
+      'insert into public.classes',
+      'insert into public.student_profiles',
+      'insert into public.student_profiles',
+      'insert into public.classes',
+      'insert into public.student_profiles',
+      'insert into public.modules',
+      'insert into public.class_modules',
+      'insert into public.class_modules',
+    ])
+    expect(runsTwice(sql)).toEqual([])
+  })
+
+  it('looks the class up by institution and name, and creates it only when none matches', () => {
+    expect(toSql({ records, staff })).toContain(
+      '  begin\n' +
+        '    select id into strict v_class_1 from public.classes\n' +
+        "    where institution = 'IDRAC Toulouse' and name = 'B1 · Groupe 2';\n" +
+        '  exception\n' +
+        '    when no_data_found then\n' +
+        '      insert into public.classes (name, institution, level, created_by)\n' +
+        "      values ('B1 · Groupe 2', 'IDRAC Toulouse', 'B1', v_master)\n" +
+        '      returning id into v_class_1;\n',
+    )
+  })
+
+  it('looks the module up by code, and creates it only when none matches', () => {
+    expect(toSql({ records, staff })).toContain(
+      '  begin\n' +
+        '    select id into strict v_module_1 from public.modules\n' +
+        "    where code = 'ST';\n" +
+        '  exception\n' +
+        '    when no_data_found then\n' +
+        '      insert into public.modules (code, title, language, session_count, created_by)\n' +
+        "      values ('ST', 'Statistiques commerciales', 'fr', 8, v_master)\n" +
+        '      returning id into v_module_1;\n',
+    )
+  })
+
+  it('stops, rather than picking one, when several classes or modules already match', () => {
+    const sql = toSql({ records, staff })
+    expect(sql).toContain(
+      '    when too_many_rows then\n' +
+        `      raise exception using message = 'PULSE_DUPLICATE_CLASS: more than one class is called "B1 · Groupe 2" at IDRAC Toulouse. Nothing was provisioned; see docs/provisioning.md.';\n` +
+        '  end;\n',
+    )
+    expect(sql).toContain(
+      '    when too_many_rows then\n' +
+        `      raise exception using message = 'PULSE_DUPLICATE_MODULE: more than one module has the code "ST". Nothing was provisioned; see docs/provisioning.md.';\n` +
+        '  end;\n',
+    )
+  })
+
+  it('escapes an apostrophe in the class, institution and module it looks for', () => {
+    const sql = toSql({
+      records: parseCsv(csv(row({ institution: "Lycée d'Arsonval", class: "Groupe d'été", module_code: "ST'2" }))),
+      staff,
+    })
+    expect(sql).toContain("where institution = 'Lycée d''Arsonval' and name = 'Groupe d''été';")
+    expect(sql).toContain("where code = 'ST''2';")
+    expect(sql).toContain(`'PULSE_DUPLICATE_CLASS: more than one class is called "Groupe d''été" at Lycée d''Arsonval.`)
+    // Outside the `--` comments, which name the class as typed, no apostrophe is left alone.
+    const code = sql
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('--'))
+      .join('\n')
+    expect(code).not.toMatch(/[^']d'(A|é)/)
+    expect(code).not.toMatch(/ST'2/)
+  })
+
+  it('still adds the missing profiles and links to the class and module it found', () => {
+    const sql = toSql({ records, staff })
+    expect(sql).toContain("values (v_class_1, 'Yanis Cherif', 'y.cherif@idrac.example')\n  on conflict (class_id, email) do nothing;")
+    expect(sql).toContain('values (v_class_2, v_module_1) on conflict do nothing;')
+  })
+})
