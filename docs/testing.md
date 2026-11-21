@@ -66,12 +66,17 @@ size too, because that is where it will be used.
 ## Running Playwright locally
 
 ```bash
-npx playwright install chromium   # once
+npx playwright install chromium   # after every Playwright update
 npm run test:e2e                  # both projects, headless
 npm run test:e2e:ui               # watch it click through, pick single tests
 npx playwright test --project=phone
 npx playwright show-report        # after a failure: trace, screenshot, video
 ```
+
+Each Playwright version drives its own browser build. When an update of
+`@playwright/test` comes in through `npm ci`, the e2e tests fail with
+"Executable doesn't exist" until the install line runs again. CI installs the
+browser on every run.
 
 The config builds the app and serves it on port 4173, so the tests run against
 what students would actually load, not the dev server.
