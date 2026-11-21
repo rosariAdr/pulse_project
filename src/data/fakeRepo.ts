@@ -333,18 +333,24 @@ export function createFakeRepo(
 
       async saveAnswer(attemptId, questionId, response) {
         const viewer = requireStudent()
-        const attempt = openAttempt(attemptId, viewer.profileIds)
-        if (!state.questions.some((q) => q.id === questionId && q.testId === attempt.testId)) {
-          throw new PulseError('NOT_AUTHORISED', 'That question belongs to another test.')
-        }
+        // The same checks as save_answer() in the database, in the same order,
+        // so the same mistake gets the same refusal from both.
         if (response.length > MAX_ANSWER_LENGTH) {
           throw new PulseError('ANSWER_TOO_LONG', `An answer is limited to ${MAX_ANSWER_LENGTH} characters.`)
         }
-        // Same grace as save_answer() in the database: the limit plus two minutes.
+        const attempt = openAttempt(attemptId, viewer.profileIds)
         const test = state.tests.find((t) => t.id === attempt.testId)!
+        // A new version closes the previous one, attempts in progress included.
+        if (test.status !== 'published') {
+          throw new PulseError('TEST_NOT_AVAILABLE', 'This test is closed.')
+        }
+        // Same grace as the database: the limit plus two minutes.
         const deadline = new Date(attempt.startedAt).getTime() + (test.timeLimitMinutes + 2) * 60_000
         if (Date.now() > deadline) {
           throw new PulseError('TIME_UP', 'The time for this test has run out.')
+        }
+        if (!state.questions.some((q) => q.id === questionId && q.testId === attempt.testId)) {
+          throw new PulseError('NOT_AUTHORISED', 'That question belongs to another test.')
         }
         const existing = state.answers.find((r) => r.attemptId === attemptId && r.questionId === questionId)
         if (existing) existing.response = response

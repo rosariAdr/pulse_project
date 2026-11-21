@@ -23,6 +23,7 @@ export const SEED = {
   lea: 'l.fontaine@idrac.example',
   yanis: 'y.cherif@idrac.example',
   lina: 'l.benali@abs.example',
+  hugo: 'h.martin@abs.example', // class M2-03, like Lina
   master: 'master@pulse.example',
 }
 
@@ -183,6 +184,31 @@ export function describeRepoContract(name: string, setup: () => Promise<Contract
         'What makes a dataset trustworthy enough to decide on?',
         'Which measure resists outliers?',
       ])
+    })
+
+    it('refuses an answer out loud once a new version has closed the test', async () => {
+      // Publishing a new version closes the one a student may still be writing
+      // in. The database refuses the next save (PULSE_TEST_CLOSED): never a
+      // silent no-op, and never accepted on a closed test.
+      await h.actAs(SEED.hugo)
+      const attempt = await h.repo.student.startAttempt(SEED.ddm)
+      const [question] = (await h.repo.student.test(SEED.ddm))!.questions
+      await h.repo.student.saveAnswer(attempt.id, question.id, 'Written before the new version')
+
+      await h.actAs(SEED.master)
+      const next = await h.repo.teacher.createDraft(SEED.ddm)
+      await h.repo.teacher.addQuestion(next.id, {
+        kind: 'short',
+        prompt: 'A question of the next version',
+        options: null,
+        skill: null,
+      })
+      await h.repo.teacher.publish(next.id)
+
+      await h.actAs(SEED.hugo)
+      expect(await codeOf(() => h.repo.student.saveAnswer(attempt.id, question.id, 'Written after it'))).toBe(
+        'TEST_NOT_AVAILABLE',
+      )
     })
   })
 }
