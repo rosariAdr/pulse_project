@@ -222,11 +222,14 @@ export function createSupabaseRepo(client: SupabaseClient): PulseRepo {
 
   /** The student's profile in the class this module is attached to, if any. */
   async function profileForModule(moduleId: string): Promise<{ id: string; className: string } | null> {
-    const { data } = await client
+    const { data, error } = await client
       .from('student_profiles')
       .select('id, classes!inner(name, class_modules!inner(module_id))')
       .eq('classes.class_modules.module_id', moduleId)
       .maybeSingle()
+    // Two profiles on the same module (a provisioning run twice) make this fail:
+    // say so, rather than hide the module as if it were not the student's.
+    if (error) fail(error, new PulseError('UNKNOWN'))
     if (!data) return null
     const row = data as Row
     const klass = row.classes as { name: string } | { name: string }[]
@@ -605,20 +608,26 @@ export function createSupabaseRepo(client: SupabaseClient): PulseRepo {
         if (error) fail(error, new PulseError('TEST_FROZEN'))
       },
 
-      async rawResults(moduleId) {
+      async rawResults(moduleId, requested) {
         await requireMaster()
 
         const { data: mod } = await client.from('modules').select('id, title').eq('id', moduleId).maybeSingle()
         if (!mod) throw new PulseError('NOT_AUTHORISED')
 
-        const { data: testRow } = await client
+        // A draft has no answers: it never stands in for the version the class took.
+        const { data: versionRows, error: versionError } = await client
           .from('tests')
-          .select('id')
+          .select('id, status, version')
           .eq('module_id', moduleId)
+          .neq('status', 'draft')
           .order('version', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        const testId = (testRow as Row | null)?.id as string | undefined
+        if (versionError) fail(versionError, new PulseError('UNKNOWN'))
+        const versions = (versionRows ?? []) as Pick<TestRow, 'id' | 'status' | 'version'>[]
+        const chosen = requested
+          ? versions.find((t) => t.id === requested)
+          : (versions.find((t) => t.status === 'published') ?? versions[0])
+        if (requested && !chosen) throw new PulseError('TEST_NOT_AVAILABLE')
+        const testId = chosen?.id
 
         const { data: questionRows } = testId
           ? await client
