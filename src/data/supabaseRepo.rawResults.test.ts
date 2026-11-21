@@ -37,6 +37,11 @@ function postgrestDouble(tables: Record<string, Row[]>, userId: string, options:
         rows = rows.filter((r) => r[column] === value)
         return query
       },
+      // rawResults reads the published versions with `.neq('status', 'draft')` (PU-07).
+      neq(column: string, value: unknown) {
+        rows = rows.filter((r) => r[column] !== value)
+        return query
+      },
       in(column: string, values: unknown[]) {
         rows = rows.filter((r) => values.includes(r[column]))
         return query
