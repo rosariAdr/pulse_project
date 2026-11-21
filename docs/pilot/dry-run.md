@@ -12,7 +12,7 @@ in, take the test and hand it in.
 ## The run
 
 - [ ] Everyone does the first visit at the same time. Note: time to sign in for the slowest phone, emails that arrived late.
-- [ ] Everyone takes the test. Midway, put one phone in airplane mode for a minute, then back: the answers must still be there.
+- [ ] Everyone takes the test. Midway, put one phone in airplane mode for a minute, then back. After the hand-in, check that phone's answers in raw results, not on its screen: an answer can stay on the screen without having been saved.
 - [ ] Everyone hands in within the same minute.
 - [ ] Raw results show 25 hand-ins; the CSV opens in a spreadsheet with accents intact.
 
