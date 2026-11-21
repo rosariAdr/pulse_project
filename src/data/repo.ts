@@ -52,8 +52,12 @@ export interface PulseRepo {
 
   teacher: {
     modules(): Promise<TeacherModule[]>
-    /** Every student's answers for that module's test. Master only. */
-    rawResults(moduleId: string): Promise<RawResults>
+    /**
+     * Every student's answers for one version of that module's test. Master only.
+     * `testId` picks the version, closed ones included; without it, the published
+     * version, else the latest closed one. Never a draft: TEST_NOT_AVAILABLE.
+     */
+    rawResults(moduleId: string, testId?: string): Promise<RawResults>
 
     /** The draft being written, or the published one if there is no draft. */
     test(moduleId: string): Promise<TestForTeacher | null>

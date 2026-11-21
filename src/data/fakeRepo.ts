@@ -477,11 +477,18 @@ export function createFakeRepo(
         remember()
       },
 
-      async rawResults(moduleId) {
+      async rawResults(moduleId, testId) {
         requireMaster()
         const mod = demo.modules.find((m) => m.id === moduleId)
         if (!mod) throw new PulseError('NOT_AUTHORISED', 'No such module.')
-        const test = state.tests.find((t) => t.moduleId === moduleId) ?? null
+        // A draft has no answers: it never stands in for the version the class took.
+        const versions = state.tests
+          .filter((t) => t.moduleId === moduleId && t.status !== 'draft')
+          .sort((a, b) => b.version - a.version)
+        const test = testId
+          ? (versions.find((t) => t.id === testId) ?? null)
+          : (versions.find((t) => t.status === 'published') ?? versions[0] ?? null)
+        if (testId && !test) throw new PulseError('TEST_NOT_AVAILABLE', 'No such version of this module’s test.')
         const classIds = demo.classModules.filter((cm) => cm.moduleId === moduleId).map((cm) => cm.classId)
         const profiles = demo.profiles.filter((p) => classIds.includes(p.classId))
         const questions = test ? questionsIn(state.questions, test.id) : []

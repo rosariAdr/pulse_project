@@ -134,6 +134,32 @@ export function describeRepoContract(name: string, setup: () => Promise<Contract
       expect(stat.testStatus).toBe('published')
     })
 
+    it('never reads a draft as raw results, and reads an earlier version on request', async () => {
+      await h.actAs(SEED.master)
+      const first = (await h.repo.teacher.test(SEED.stat))!
+      const next = await h.repo.teacher.createDraft(SEED.stat)
+
+      // A draft has no answers: the class's answers stay on screen and in the CSV.
+      const whileDrafting = await h.repo.teacher.rawResults(SEED.stat)
+      expect(whileDrafting.testId).toBe(first.id)
+      expect(whileDrafting.answers.find((a) => a.questionId === q1)?.response).toBe('Des étalements différents')
+      expect(await codeOf(() => h.repo.teacher.rawResults(SEED.stat, next.id))).toBe('TEST_NOT_AVAILABLE')
+
+      await h.repo.teacher.addQuestion(next.id, {
+        kind: 'short',
+        prompt: 'A question of version 2',
+        options: null,
+        skill: null,
+      })
+      await h.repo.teacher.publish(next.id)
+
+      // The new version is what the class sees now; the first stays readable.
+      expect((await h.repo.teacher.rawResults(SEED.stat)).testId).toBe(next.id)
+      const earlier = await h.repo.teacher.rawResults(SEED.stat, first.id)
+      expect(earlier.testId).toBe(first.id)
+      expect(earlier.answers.find((a) => a.questionId === q1)?.response).toBe('Des étalements différents')
+    })
+
     it('writes a test as a draft and publishes it once', async () => {
       const draft = await h.repo.teacher.createDraft(SEED.ddm)
       expect(draft.status).toBe('draft')
