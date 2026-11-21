@@ -27,7 +27,8 @@ import {
  * is a development double, never a security boundary.
  */
 
-type Account = { email: string; password: string }
+/** `unconfirmed` while the confirmation link has not been opened; absent once it has. */
+type Account = { email: string; password: string; unconfirmed?: true }
 type AnswerRow = { attemptId: string; questionId: string; studentProfileId: string; response: string }
 
 type TestRow = {
@@ -130,7 +131,7 @@ export function createFakeRepo(
      */
     requireEmailConfirmation?: boolean
   },
-): PulseRepo & { state: FakeState } {
+): PulseRepo & { state: FakeState; confirmEmail(email: string): void } {
   // Persistence is opt-in: the app asks for it so a refresh mid-demo keeps the
   // session and the answers; tests never do, so they start from a clean class.
   const stored = options?.persist ? readStored() : null
@@ -224,6 +225,13 @@ export function createFakeRepo(
   return {
     state,
 
+    /** Imitates the student opening the confirmation link. */
+    confirmEmail(email: string) {
+      const account = state.accounts.find((a) => a.email === lower(email))
+      if (account) delete account.unconfirmed
+      remember()
+    },
+
     auth: {
       async current() {
         return state.viewerEmail ? viewerFor(state.viewerEmail) : null
@@ -233,6 +241,8 @@ export function createFakeRepo(
         if (!account || account.password !== password) {
           throw new PulseError('BAD_CREDENTIALS', 'That email and password do not match.')
         }
+        // Supabase Auth refuses the sign-in until the link is opened.
+        if (account.unconfirmed) throw new PulseError('EMAIL_NOT_CONFIRMED', 'Open the confirmation link first.')
         const viewer = viewerFor(email)
         if (!viewer) throw new PulseError('NO_PROFILE')
         state.viewerEmail = lower(email)
@@ -243,15 +253,19 @@ export function createFakeRepo(
         const viewer = viewerFor(email)
         if (!viewer) throw new PulseError('NO_PROFILE', 'This email has no Pulse profile.')
         if (state.accounts.some((a) => a.email === lower(email))) {
-          // Already claimed: signing in is the right path, and we never say more than that.
-          throw new PulseError('BAD_CREDENTIALS', 'This profile already has an account. Sign in instead.')
+          // Already claimed, answered as the real project does, password untouched.
+          // Confirmation on: as for a new account, so as not to reveal it exists.
+          // Confirmation off: Supabase refuses the sign-up, which reads as NO_PROFILE.
+          if (options?.requireEmailConfirmation) throw new PulseError('CHECK_INBOX')
+          throw new PulseError('NO_PROFILE', 'This profile already has an account.')
         }
-        state.accounts.push({ email: lower(email), password })
         if (options?.requireEmailConfirmation) {
           // The account exists; the session waits for the confirmation link.
+          state.accounts.push({ email: lower(email), password, unconfirmed: true })
           remember()
           throw new PulseError('CHECK_INBOX', 'Open the confirmation link, then sign in.')
         }
+        state.accounts.push({ email: lower(email), password })
         state.viewerEmail = lower(email)
         remember()
         return viewer

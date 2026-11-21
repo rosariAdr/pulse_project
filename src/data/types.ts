@@ -116,6 +116,9 @@ export type PulseErrorCode =
   | 'NO_PROFILE' // the email has no pre-created profile (no self-enrollment)
   | 'CHECK_INBOX' // a state, not a failure: the account exists, the address awaits its confirmation link
   | 'BAD_CREDENTIALS'
+  | 'EMAIL_NOT_CONFIRMED' // the account exists, but its confirmation link has not been opened yet
+  | 'RATE_LIMITED' // Supabase Auth counts requests per IP address: one school wifi, many phones
+  | 'OFFLINE' // the request never reached Supabase: a cut, not a refusal
   | 'ATTEMPT_CLOSED' // already handed in
   | 'ATTEMPT_EXISTS' // one attempt per student per test
   | 'TEST_NOT_AVAILABLE' // not published, closed, or not attached to this student's class

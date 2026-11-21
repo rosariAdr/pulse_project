@@ -103,6 +103,9 @@ export const errorMessages = {
   NO_PROFILE: en.door.noProfile,
   CHECK_INBOX: en.door.checkInbox, // a state, not a failure: the door shows it as a status
   BAD_CREDENTIALS: "That email and password do not match.",
+  EMAIL_NOT_CONFIRMED: "Your address is not confirmed yet. Open the link we sent to your school email, then sign in again.",
+  RATE_LIMITED: "Pulse is receiving too many requests from this network right now. Wait a few minutes, then try again.",
+  OFFLINE: "Pulse could not be reached. Check your wifi or mobile data, then try again.",
   ATTEMPT_CLOSED: "You have already handed this test in, so it can no longer change.",
   ATTEMPT_EXISTS: "You have already started this test.",
   TEST_NOT_AVAILABLE: "This test is not open.",
