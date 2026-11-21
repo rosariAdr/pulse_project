@@ -29,6 +29,9 @@ import {
 
 type Row = Record<string, unknown>
 
+/** PostgREST's `max_rows` (supabase/config.toml, and the hosted default). */
+const ANSWER_PAGE = 1000
+
 type AttemptRow = { id: string; test_id: string; student_profile_id: string; started_at: string; submitted_at: string | null }
 type TestRow = { id: string; module_id: string; version: number; status: TestStatus; time_limit_minutes: number }
 type QuestionRow = { id: string; position: number; kind: Question['kind']; prompt: string; options: string[] | null; skill: string | null }
@@ -141,6 +144,34 @@ export function createSupabaseRepo(client: SupabaseClient): PulseRepo {
       email: rows[0].email as string,
       profileIds: rows.map((r) => r.id as string),
     }
+  }
+
+  /**
+   * Every answer of these attempts. PostgREST sends at most `max_rows` rows per
+   * read (1 000) and says nothing about the rest, so this reads page by page,
+   * moving on by what actually arrived, and checks the total against an exact
+   * count: raw results and their CSV are never quietly short.
+   */
+  async function everyAnswerOf(attemptIds: string[]): Promise<Row[]> {
+    const rows: Row[] = []
+    let expected: number | null = null
+    for (;;) {
+      const { data, error, count } = await client
+        .from('answers')
+        .select('attempt_id, question_id, response', { count: 'exact' })
+        .in('attempt_id', attemptIds)
+        .order('id')
+        .range(rows.length, rows.length + ANSWER_PAGE - 1)
+      if (error) fail(error, new PulseError('UNKNOWN'))
+      expected ??= count
+      const page = (data ?? []) as Row[]
+      rows.push(...page)
+      if (page.length === 0 || expected === null || rows.length >= expected) break
+    }
+    if (rows.length !== expected) {
+      throw new PulseError('UNKNOWN', `Read ${rows.length} answers where the database counts ${expected ?? 'none'}.`)
+    }
+    return rows
   }
 
   async function requireStudent() {
@@ -580,26 +611,14 @@ export function createSupabaseRepo(client: SupabaseClient): PulseRepo {
             ).map((r) => toAttempt(r as AttemptRow))
           : []
 
-        const answerRows = attempts.length
-          ? ((
-              await client
-                .from('answers')
-                .select('attempt_id, question_id, response')
-                .in(
-                  'attempt_id',
-                  attempts.map((a) => a.id),
-                )
-            ).data ?? [])
-          : []
+        const answerRows = attempts.length ? await everyAnswerOf(attempts.map((a) => a.id)) : []
+        const responseOf = new Map(answerRows.map((r) => [`${r.attempt_id}|${r.question_id}`, r.response as string]))
 
         const answers: RawAnswer[] = []
         for (const attempt of attempts) {
           const profile = profiles.find((p) => p.profileId === attempt.studentProfileId)
           if (!profile) continue
           for (const question of questions) {
-            const row = (answerRows as Row[]).find(
-              (r) => r.attempt_id === attempt.id && r.question_id === question.id,
-            )
             answers.push({
               studentProfileId: profile.profileId,
               studentName: profile.name,
@@ -607,7 +626,7 @@ export function createSupabaseRepo(client: SupabaseClient): PulseRepo {
               questionId: question.id,
               questionPosition: question.position,
               prompt: question.prompt,
-              response: (row?.response as string) ?? '',
+              response: responseOf.get(`${attempt.id}|${question.id}`) ?? '',
               submittedAt: attempt.submittedAt,
             })
           }
