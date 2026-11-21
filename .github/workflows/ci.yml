@@ -1,5 +1,6 @@
 # Every pull request, and every push to dev or main: the three test layers.
-#   app       lint + secret scan + types + unit/component tests (vitest) + build
+#   app       lint + secret scan + Supabase CLI pin + types + unit/component
+#             tests (vitest) + build
 #   e2e       the journeys in a real browser, laptop and phone (Playwright)
 #   database  the data rules (pgTAP) — the only place RLS is proven — then the
 #             repository contract against the same stack (integration)
@@ -22,6 +23,27 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run check:secrets
+      # Every supabase/setup-cli step installs the CLI version locked in
+      # package-lock.json. A moving "latest" broke the nightly backup on 17 Nov
+      # 2026; bump the devDependency and the workflows together.
+      - name: Supabase CLI pinned to package-lock.json
+        run: |
+          want=$(node -p "require('./package-lock.json').packages['node_modules/supabase'].version")
+          bad=0
+          for f in .github/workflows/*.yml .github/workflows/*.yaml; do
+            [ -e "$f" ] || continue
+            awk -v want="$want" -v f="$f" '
+              function check() {
+                if (at && !ok) { printf "::error file=%s,line=%d::supabase/setup-cli is not pinned to %s, the version in package-lock.json\n", f, at, want; bad = 1 }
+                at = 0
+              }
+              /uses:[ \t]*supabase\/setup-cli@/ { check(); at = FNR; ok = 0; next }
+              at && $1 == "version:" { v = $2; gsub(/"/, "", v); gsub(sprintf("%c", 39), "", v); ok = (v == want); check(); next }
+              at && /^[ \t]*-[ \t]/ { check() }
+              END { check(); exit bad }
+            ' "$f" || bad=1
+          done
+          exit $bad
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
@@ -49,9 +71,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Same version as package-lock.json (checked in the app job).
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.119.0
       # Postgres + auth only: the tests insert into auth.users and read auth.uid().
       # Applying migrations/ and seed.sql is part of the start.
       - run: supabase start -x studio,imgproxy,inbucket,realtime,storage-api,edge-runtime,logflare,vector,supavisor,mailpit

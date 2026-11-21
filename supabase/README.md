@@ -26,7 +26,7 @@ GitHub secrets (Settings → Secrets and variables → Actions):
 | `SUPABASE_DB_URL_PROD` | Session pooler connection string with the password |
 | `BACKUP_PASSPHRASE` | Long passphrase, kept offline by both founders |
 
-The workflows skip quietly while a secret is missing.
+*Nightly backup (prod)* refuses to run (a red run) while `SUPABASE_DB_URL_PROD` or `BACKUP_PASSPHRASE` is missing, or while the passphrase is shorter than 20 characters. *Keep Supabase awake* still skips an environment quietly while its URL secret is missing, so a green run proves nothing until the **Ping PROD** step of the *ping (PROD)* job shows the time returned by `ping()` (day-before check in `docs/pilot/runbook.md`).
 
 ## Late exercise answers
 
