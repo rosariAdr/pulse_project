@@ -5,10 +5,15 @@ import { MAX_ANSWER_LENGTH, PulseError, type Attempt, type Question, type TestFo
 import { en, messageForError } from '../../i18n/en'
 import { Button, Card, Choice, Progress, TextAreaField } from '../../ui/pulse-ui-kit/react'
 
-type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
+/** Where one answer stands on its way to the database. */
+type Save = { state: 'saving' | 'saved' } | { state: 'failed'; error: string }
 
 /** How long after the last keystroke an open answer is sent. */
 const AUTOSAVE_DELAY_MS = 800
+
+const errorText = (e: unknown) => (e instanceof PulseError ? messageForError(e.code) : en.common.error)
+
+const failedIds = (saves: Record<string, Save>) => Object.keys(saves).filter((id) => saves[id].state === 'failed')
 
 /**
  * The entrance test, taken in class on a phone.
@@ -18,6 +23,12 @@ const AUTOSAVE_DELAY_MS = 800
  *   at worst — and the student can see that it saved;
  * - a refusal is shown, never swallowed: the data layer raises rather than
  *   quietly saving nothing;
+ * - each question keeps its own save state, so a failed answer stays flagged
+ *   until that answer itself saves — another question saving does not hide it;
+ * - handing in first sends what is still waiting and waits for every save on
+ *   the wire; if one fails meanwhile, nothing is handed in until the student
+ *   has seen what would be lost; meanwhile the answers are frozen, since an
+ *   edit would reach an attempt that is closing;
  * - questions can be revisited in any order, because this is a starting point,
  *   not an exam;
  * - handing in asks once, and cannot be undone.
@@ -31,12 +42,20 @@ export function TestRun() {
   const [attempt, setAttempt] = useState<Attempt | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [index, setIndex] = useState(0)
-  const [save, setSave] = useState<SaveState>('idle')
+  const [saves, setSaves] = useState<Record<string, Save>>({})
   const [error, setError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
+  const [handingIn, setHandingIn] = useState<'waiting' | 'sending' | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** The same save states, readable after an await (state would be stale there). */
+  const savesNow = useRef<Record<string, Save>>({})
+  /** Typed answers waiting for their pause — one per question, so typing in one never cancels another. */
+  const pending = useRef(new Map<string, { timer: ReturnType<typeof setTimeout>; value: string }>())
+  /** Saves on the wire. Handing in waits for every one of them. */
+  const inFlight = useRef(new Set<Promise<void>>())
+  /** The last save sent for each question: only its outcome counts. */
+  const latest = useRef(new Map<string, number>())
 
   // Open the test: load it, and start the attempt if this is the first visit.
   useEffect(() => {
@@ -67,43 +86,92 @@ export function TestRun() {
     })()
     return () => {
       cancelled = true
-      if (timer.current) clearTimeout(timer.current)
     }
   }, [repo, moduleId, navigate])
 
+  const mark = useCallback((questionId: string, save: Save) => {
+    savesNow.current = { ...savesNow.current, [questionId]: save }
+    setSaves(savesNow.current)
+  }, [])
+
+  /** Sends one answer now. The promise never rejects: a failure is marked on that question. */
   const persist = useCallback(
-    async (questionId: string, value: string) => {
-      if (!attempt) return
-      setSave('saving')
-      try {
-        await repo.student.saveAnswer(attempt.id, questionId, value)
-        setSave('saved')
-        setError(null)
-      } catch (e) {
-        setSave('failed')
-        setError(e instanceof PulseError ? messageForError(e.code) : en.common.error)
+    (questionId: string, value: string): Promise<void> => {
+      if (!attempt) return Promise.resolve()
+      const queued = pending.current.get(questionId)
+      if (queued) {
+        clearTimeout(queued.timer)
+        pending.current.delete(questionId)
       }
+      const seq = (latest.current.get(questionId) ?? 0) + 1
+      latest.current.set(questionId, seq)
+      mark(questionId, { state: 'saving' })
+
+      const save = (async () => {
+        try {
+          await repo.student.saveAnswer(attempt.id, questionId, value)
+          if (latest.current.get(questionId) === seq) mark(questionId, { state: 'saved' })
+        } catch (e) {
+          if (latest.current.get(questionId) === seq) mark(questionId, { state: 'failed', error: errorText(e) })
+        }
+      })()
+      inFlight.current.add(save)
+      void save.finally(() => inFlight.current.delete(save))
+      return save
     },
-    [repo, attempt],
+    [repo, attempt, mark],
   )
+
+  // Leaving the page must not drop an answer still waiting for its pause.
+  useEffect(() => {
+    const waiting = pending.current
+    return () => {
+      for (const [questionId, queued] of waiting) void persist(questionId, queued.value)
+    }
+  }, [persist])
 
   /** A choice is a decision: save it at once. Typing waits for a pause. */
   const answer = (question: Question, value: string, immediate: boolean) => {
     setAnswers((prev) => ({ ...prev, [question.id]: value }))
-    if (timer.current) clearTimeout(timer.current)
-    if (immediate) void persist(question.id, value)
-    else timer.current = setTimeout(() => void persist(question.id, value), AUTOSAVE_DELAY_MS)
+    if (immediate) {
+      void persist(question.id, value)
+      return
+    }
+    const queued = pending.current.get(question.id)
+    if (queued) clearTimeout(queued.timer)
+    pending.current.set(question.id, {
+      value,
+      timer: setTimeout(() => void persist(question.id, value), AUTOSAVE_DELAY_MS),
+    })
   }
 
   async function handIn() {
-    if (!attempt) return
-    if (timer.current) clearTimeout(timer.current)
+    if (!attempt || handingIn) return
+    // What the dialog showed when the student decided.
+    const known = new Set(failedIds(savesNow.current))
+    setError(null)
+    setHandingIn('waiting')
+
+    // Handing in closes the attempt: any save still on its way would be refused.
+    while (pending.current.size > 0 || inFlight.current.size > 0) {
+      for (const [questionId, queued] of pending.current) void persist(questionId, queued.value)
+      await Promise.allSettled([...inFlight.current])
+    }
+    if (failedIds(savesNow.current).some((id) => !known.has(id))) {
+      // A save failed while we waited. The dialog now says what would be lost;
+      // nothing is handed in until the student decides again.
+      setHandingIn(null)
+      return
+    }
+
+    setHandingIn('sending')
     try {
       await repo.student.handIn(attempt.id)
       navigate(`/modules/${moduleId}/handed-in`, { replace: true })
     } catch (e) {
+      setHandingIn(null)
       setConfirming(false)
-      setError(e instanceof PulseError ? messageForError(e.code) : en.common.error)
+      setError(errorText(e))
     }
   }
 
@@ -121,6 +189,21 @@ export function TestRun() {
   const answered = test.questions.filter((q) => (answers[q.id] ?? '').trim() !== '').length
   const last = index === test.questions.length - 1
 
+  // Numbered as the student sees them. A failure outranks every success.
+  const failed = test.questions.flatMap((q, i) => {
+    const save = saves[q.id]
+    return save?.state === 'failed' ? [{ id: q.id, number: i + 1, error: save.error }] : []
+  })
+  const states = Object.values(saves).map((s) => s.state)
+  const saveStatus =
+    failed.length > 0
+      ? en.test.notSaved
+      : states.includes('saving')
+        ? en.test.saving
+        : states.includes('saved')
+          ? en.test.saved
+          : ''
+
   return (
     <div className="mx-auto grid w-full max-w-2xl gap-5">
       <header className="grid gap-2">
@@ -130,17 +213,19 @@ export function TestRun() {
           label={`Question ${index + 1} of ${test.questions.length}`}
         />
         <p className="text-ink-muted text-sm" aria-live="polite">
-          Question {index + 1} of {test.questions.length} · {answered} answered ·{' '}
-          <span>
-            {save === 'saving' ? en.test.saving : save === 'saved' ? en.test.saved : save === 'failed' ? 'Not saved' : ''}
-          </span>
+          Question {index + 1} of {test.questions.length} · {answered} answered · <span>{saveStatus}</span>
         </p>
       </header>
 
-      {error && (
-        <p className="pl-error" role="alert">
-          {error}
-        </p>
+      {(error || failed.length > 0) && (
+        <div className="pl-error grid gap-1" role="alert">
+          {error && <p>{error}</p>}
+          {failed.map((f) => (
+            <p key={f.id}>
+              {en.test.didNotSave(f.number)} {f.error}
+            </p>
+          ))}
+        </div>
       )}
 
       <Card>
@@ -156,6 +241,7 @@ export function TestRun() {
                 name={`q-${question.id}`}
                 value={option}
                 checked={answers[question.id] === option}
+                disabled={handingIn !== null}
                 onChange={() => answer(question, option, true)}
               >
                 {option}
@@ -169,6 +255,7 @@ export function TestRun() {
             rows={5}
             maxLength={MAX_ANSWER_LENGTH}
             value={answers[question.id] ?? ''}
+            disabled={handingIn !== null}
             onChange={(e) => answer(question, e.target.value, false)}
             onBlur={(e) => void persist(question.id, e.target.value)}
           />
@@ -211,11 +298,18 @@ export function TestRun() {
               {test.questions.length - answered} question(s) left blank. That is allowed.
             </p>
           )}
+          {failed.length > 0 && <p className="pl-error">{en.test.unsavedOnHandIn(failed.length)}</p>}
+          {/* Mounted before it speaks, so screen readers announce the wait. */}
+          <p className="text-ink-muted text-sm" aria-live="polite">
+            {handingIn === 'waiting' ? en.test.savingBeforeHandIn : ''}
+          </p>
           <div className="flex gap-2">
-            <Button variant="primary" onClick={() => void handIn()}>
+            <Button variant="primary" disabled={handingIn !== null} onClick={() => void handIn()}>
               {en.test.handIn}
             </Button>
-            <Button onClick={() => setConfirming(false)}>{en.common.cancel}</Button>
+            <Button disabled={handingIn !== null} onClick={() => setConfirming(false)}>
+              {en.common.cancel}
+            </Button>
           </div>
         </Card>
       )}

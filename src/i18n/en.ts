@@ -40,6 +40,10 @@ export const en = {
     confirmHandIn: "Hand in now? You won't be able to change your answers.",
     handedIn: "Handed in. Your module is unlocked.",
     closed: "This test is closed.",
+    notSaved: "Not saved",
+    didNotSave: (n: number) => `Question ${n} did not save.`,
+    unsavedOnHandIn: (n: number) => `${n} answer(s) not saved. If you hand in now, they will be lost.`,
+    savingBeforeHandIn: "Saving your last answers before handing in…",
   },
   exercise: {
     submit: "Submit",
