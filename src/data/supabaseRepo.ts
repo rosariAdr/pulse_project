@@ -50,11 +50,38 @@ const toQuestion = (r: QuestionRow): Question => ({
   skill: r.skill,
 })
 
+/** What supabase-js hands back: a PostgREST error, or an AuthError with an HTTP status. */
+type SupabaseFailure = { message?: string; code?: string; status?: number; name?: string }
+
+/**
+ * The request never reached Supabase, or came back without an answer. Auth says
+ * so by name; PostgREST passes on the browser's own words, which differ per
+ * engine (Chrome, Firefox, Safari, Node), or an AbortError on a timeout.
+ */
+function isCut(error: SupabaseFailure | null): boolean {
+  if (!error) return false
+  if (error.name === 'AuthRetryableFetchError') return true
+  return /failed to fetch|fetch failed|networkerror|load failed|network request failed|aborterror/i.test(
+    error.message ?? '',
+  )
+}
+
+/** Supabase Auth counts sign-ins and emails per IP address: one school wifi, many phones. */
+function isRateLimited(error: SupabaseFailure | null): boolean {
+  if (!error) return false
+  return error.status === 429 || error.code?.startsWith('over_') === true || /rate limit/i.test(error.message ?? '')
+}
+
 /** Maps what the database says into something a screen can put in front of a student. */
-function fail(error: { message?: string; code?: string } | null, fallback: PulseError): never {
+function fail(error: SupabaseFailure | null, fallback: PulseError): never {
   const message = error?.message ?? ''
   const says = (marker: string) => message.includes(marker)
 
+  if (isCut(error)) throw new PulseError('OFFLINE')
+  if (isRateLimited(error)) throw new PulseError('RATE_LIMITED')
+  if (error?.code === 'email_not_confirmed' || /email not confirmed/i.test(message)) {
+    throw new PulseError('EMAIL_NOT_CONFIRMED')
+  }
   if (says('PULSE_NO_PROFILE')) throw new PulseError('NO_PROFILE')
   if (says('PULSE_ATTEMPT_CLOSED')) throw new PulseError('ATTEMPT_CLOSED')
   if (says('PULSE_TIME_UP')) throw new PulseError('TIME_UP')
@@ -65,7 +92,9 @@ function fail(error: { message?: string; code?: string } | null, fallback: Pulse
   }
   if (error?.code === '23505') throw new PulseError('ATTEMPT_EXISTS')
   if (error?.code === '42501') throw new PulseError('NOT_AUTHORISED')
-  if (message.toLowerCase().includes('invalid login credentials')) throw new PulseError('BAD_CREDENTIALS')
+  if (error?.code === 'invalid_credentials' || /invalid login credentials/i.test(message)) {
+    throw new PulseError('BAD_CREDENTIALS')
+  }
   throw fallback
 }
 
@@ -112,25 +141,30 @@ export function createSupabaseRepo(client: SupabaseClient): PulseRepo {
 
   /** Who is signed in, resolved from the tables rather than from the token. */
   async function viewer(): Promise<Viewer | null> {
-    const { data: auth } = await client.auth.getUser()
+    const { data: auth, error: authError } = await client.auth.getUser()
+    // Nobody signed in is an answer; a cut or a rate limit is not, and must not
+    // read as "you cannot do that" in the middle of a test.
+    if (isCut(authError) || isRateLimited(authError)) fail(authError, new PulseError('UNKNOWN'))
     const user = auth.user
     if (!user) return null
 
-    const { data: staff } = await client
+    const { data: staff, error: staffError } = await client
       .from('staff_accounts')
       .select('id, display_name, email')
       .eq('user_id', user.id)
       .maybeSingle()
+    if (staffError) fail(staffError, new PulseError('UNKNOWN'))
 
     if (staff) {
       const s = staff as Row
       return { kind: 'master', id: s.id as string, name: s.display_name as string, email: s.email as string }
     }
 
-    const { data: profiles } = await client
+    const { data: profiles, error: profileError } = await client
       .from('student_profiles')
       .select('id, full_name, email')
       .eq('user_id', user.id)
+    if (profileError) fail(profileError, new PulseError('UNKNOWN'))
 
     const rows = (profiles ?? []) as Row[]
     if (rows.length === 0) return null
@@ -169,22 +203,25 @@ export function createSupabaseRepo(client: SupabaseClient): PulseRepo {
   }
 
   async function publishedTest(moduleId: string) {
-    const { data } = await client
+    const { data, error } = await client
       .from('tests')
       .select('id, time_limit_minutes')
       .eq('module_id', moduleId)
       .eq('status', 'published')
       .maybeSingle()
+    // A cut is not "no test": the student must be told to retry, not that it is closed.
+    if (error) fail(error, new PulseError('UNKNOWN'))
     return data as { id: string; time_limit_minutes: number } | null
   }
 
   async function attemptFor(testId: string, profileId: string): Promise<Attempt | null> {
-    const { data } = await client
+    const { data, error } = await client
       .from('attempts')
       .select('id, test_id, student_profile_id, started_at, submitted_at')
       .eq('test_id', testId)
       .eq('student_profile_id', profileId)
       .maybeSingle()
+    if (error) fail(error, new PulseError('UNKNOWN'))
     return data ? toAttempt(data as AttemptRow) : null
   }
 
@@ -220,7 +257,8 @@ export function createSupabaseRepo(client: SupabaseClient): PulseRepo {
 
       async signIn(email, password) {
         const { error } = await client.auth.signInWithPassword({ email, password })
-        if (error) fail(error, new PulseError('BAD_CREDENTIALS'))
+        // A wrong password is recognised by name in fail(); anything else is not one.
+        if (error) fail(error, new PulseError('UNKNOWN'))
         const v = await viewer()
         if (!v) throw new PulseError('NO_PROFILE')
         return v
@@ -262,14 +300,18 @@ export function createSupabaseRepo(client: SupabaseClient): PulseRepo {
     student: {
       async modules() {
         const v = await requireStudent()
+        // A failed read of the classes must not look like a student with no module.
+        const { data: classRows, error: classError } = await client
+          .from('student_profiles')
+          .select('class_id')
+          .in('id', v.profileIds)
+        if (classError) fail(classError, new PulseError('UNKNOWN'))
         const { data, error } = await client
           .from('class_modules')
           .select('module_id, student_profiles:classes!inner(id)')
           .in(
             'class_id',
-            (
-              await client.from('student_profiles').select('class_id').in('id', v.profileIds)
-            ).data?.map((r) => (r as Row).class_id as string) ?? [],
+            ((classRows ?? []) as Row[]).map((r) => r.class_id as string),
           )
         if (error) fail(error, new PulseError('UNKNOWN'))
 
@@ -351,7 +393,9 @@ export function createSupabaseRepo(client: SupabaseClient): PulseRepo {
         await requireStudent()
         // submitted_at comes from the server's clock, inside the function.
         const { data, error } = await client.rpc('hand_in_attempt', { p_attempt_id: attemptId })
-        if (error) fail(error, new PulseError('ATTEMPT_CLOSED'))
+        // "Already handed in" only when the database says so (PULSE_ATTEMPT_CLOSED):
+        // after a cut the test is still open, and the student must try again.
+        if (error) fail(error, new PulseError('UNKNOWN'))
 
         const { data: row } = await client
           .from('attempts')

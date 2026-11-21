@@ -44,7 +44,25 @@ describe('the door', () => {
 
     expect(await codeOf(() => confirming.auth.claimProfile(AYA, 'a-good-password'))).toBe('CHECK_INBOX')
     expect(await confirming.auth.current()).toBeNull()
+    // As Supabase Auth does: no sign-in before the link is opened.
+    expect(await codeOf(() => confirming.auth.signIn(AYA, 'a-good-password'))).toBe('EMAIL_NOT_CONFIRMED')
+    expect(await confirming.auth.current()).toBeNull()
+
+    confirming.confirmEmail(AYA)
     expect((await confirming.auth.signIn(AYA, 'a-good-password')).name).toBe('Aya Benkirane')
+  })
+
+  it('answers a second claim of the same profile as the real project does', async () => {
+    // Confirmation off (local stack, pulse-dev): Supabase refuses the second
+    // sign-up, which reads as NO_PROFILE. Confirmation on: it answers as for a
+    // new account, without a session, so as not to reveal that one exists.
+    expect(await codeOf(() => repo.auth.claimProfile(LEA, 'another-password'))).toBe('NO_PROFILE')
+    const confirming = createFakeRepo(undefined, { requireEmailConfirmation: true })
+    expect(await codeOf(() => confirming.auth.claimProfile(LEA, 'another-password'))).toBe('CHECK_INBOX')
+
+    // Neither replaces the password of the account that exists.
+    expect((await repo.auth.signIn(LEA, DEMO_PASSWORD)).email).toBe(LEA)
+    expect((await confirming.auth.signIn(LEA, DEMO_PASSWORD)).email).toBe(LEA)
   })
 
   it('matches the profile email whatever the case', async () => {
