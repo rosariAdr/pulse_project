@@ -173,6 +173,30 @@ describe('creating the password when Supabase Auth refuses', () => {
     const repo = createSupabaseRepo(clientThatAnswers({ signUp: authCut }))
     expect(await codeOf(() => repo.auth.claimProfile('student@school.example', 'a-good-password'))).toBe('OFFLINE')
   })
+
+  it('says NO_PROFILE when the database trigger refuses an unknown email', async () => {
+    // The PULSE_NO_PROFILE trigger makes GoTrue answer HTTP 500 "Database error
+    // saving new user". auth-js 2.116 files every 5xx as an AuthRetryableFetchError
+    // (lib/fetch.js, NETWORK_ERROR_CODES), with the status kept: an answer from
+    // the server, not a cut. This is what the CI `database` job received.
+    const refused = {
+      data: { user: null, session: null },
+      error: new AuthRetryableFetchError('Database error saving new user', 500),
+    }
+    const repo = createSupabaseRepo(clientThatAnswers({ signUp: refused }))
+    expect(await codeOf(() => repo.auth.claimProfile('stranger@nowhere.example', 'a-good-password'))).toBe(
+      'NO_PROFILE',
+    )
+  })
+
+  it('still says the connection failed when a gateway answers instead of Supabase', async () => {
+    // 502, 503, 504 and the Cloudflare 52x: the project could not be reached.
+    for (const status of [502, 503, 504, 522]) {
+      const gateway = { data: { user: null, session: null }, error: new AuthRetryableFetchError('Bad Gateway', status) }
+      const repo = createSupabaseRepo(clientThatAnswers({ signUp: gateway }))
+      expect(await codeOf(() => repo.auth.claimProfile('student@school.example', 'a-good-password'))).toBe('OFFLINE')
+    }
+  })
 })
 
 describe('the test day, when the connection drops', () => {
