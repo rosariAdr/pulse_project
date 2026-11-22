@@ -18,6 +18,10 @@
  * One row per student. The class, institution and module repeat on every row of
  * that class — that is what makes the file easy to fill in by hand.
  *
+ * The SQL is safe to run again on the same project: a class (institution +
+ * name) or a module (code) that already exists is reused, and only what is
+ * missing is added. That is how a corrected CSV is applied on the day.
+ *
  * It prints SQL and never connects to anything: nothing is provisioned until a
  * human reads the output and runs it. Student names and emails are personal
  * data, so the file you feed it does not belong in the repository. The logic

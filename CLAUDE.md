@@ -1,5 +1,9 @@
+@AGENTS.md
+
 # CLAUDE.md — Pulse
 
+> **Keep the `@AGENTS.md` import above as the very first line when regenerating this file:** the working conventions (git, commits, tests, `porte`, agent rules) live in `AGENTS.md`, read by both Claude Code and Codex.
+>
 > Bridge file between the Notion Second Brain and this repo. **Regenerate it whenever the Decision Log changes.** Generated 2026-10-03, updated 19 Oct 2026 (V0 scope, email confirmation), from: Claude Operating Guide, Decision Log (newest entry 3 Oct 2026: design direction + V0 decisions), Roadmap, Build Plan V0, Website Documentation, Data Architecture, Page Framework v10.
 
 ## What Pulse is

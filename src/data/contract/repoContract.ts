@@ -23,6 +23,7 @@ export const SEED = {
   lea: 'l.fontaine@idrac.example',
   yanis: 'y.cherif@idrac.example',
   lina: 'l.benali@abs.example',
+  hugo: 'h.martin@abs.example', // class M2-03, like Lina
   master: 'master@pulse.example',
 }
 
@@ -134,6 +135,32 @@ export function describeRepoContract(name: string, setup: () => Promise<Contract
       expect(stat.testStatus).toBe('published')
     })
 
+    it('never reads a draft as raw results, and reads an earlier version on request', async () => {
+      await h.actAs(SEED.master)
+      const first = (await h.repo.teacher.test(SEED.stat))!
+      const next = await h.repo.teacher.createDraft(SEED.stat)
+
+      // A draft has no answers: the class's answers stay on screen and in the CSV.
+      const whileDrafting = await h.repo.teacher.rawResults(SEED.stat)
+      expect(whileDrafting.testId).toBe(first.id)
+      expect(whileDrafting.answers.find((a) => a.questionId === q1)?.response).toBe('Des étalements différents')
+      expect(await codeOf(() => h.repo.teacher.rawResults(SEED.stat, next.id))).toBe('TEST_NOT_AVAILABLE')
+
+      await h.repo.teacher.addQuestion(next.id, {
+        kind: 'short',
+        prompt: 'A question of version 2',
+        options: null,
+        skill: null,
+      })
+      await h.repo.teacher.publish(next.id)
+
+      // The new version is what the class sees now; the first stays readable.
+      expect((await h.repo.teacher.rawResults(SEED.stat)).testId).toBe(next.id)
+      const earlier = await h.repo.teacher.rawResults(SEED.stat, first.id)
+      expect(earlier.testId).toBe(first.id)
+      expect(earlier.answers.find((a) => a.questionId === q1)?.response).toBe('Des étalements différents')
+    })
+
     it('writes a test as a draft and publishes it once', async () => {
       const draft = await h.repo.teacher.createDraft(SEED.ddm)
       expect(draft.status).toBe('draft')
@@ -183,6 +210,31 @@ export function describeRepoContract(name: string, setup: () => Promise<Contract
         'What makes a dataset trustworthy enough to decide on?',
         'Which measure resists outliers?',
       ])
+    })
+
+    it('refuses an answer out loud once a new version has closed the test', async () => {
+      // Publishing a new version closes the one a student may still be writing
+      // in. The database refuses the next save (PULSE_TEST_CLOSED): never a
+      // silent no-op, and never accepted on a closed test.
+      await h.actAs(SEED.hugo)
+      const attempt = await h.repo.student.startAttempt(SEED.ddm)
+      const [question] = (await h.repo.student.test(SEED.ddm))!.questions
+      await h.repo.student.saveAnswer(attempt.id, question.id, 'Written before the new version')
+
+      await h.actAs(SEED.master)
+      const next = await h.repo.teacher.createDraft(SEED.ddm)
+      await h.repo.teacher.addQuestion(next.id, {
+        kind: 'short',
+        prompt: 'A question of the next version',
+        options: null,
+        skill: null,
+      })
+      await h.repo.teacher.publish(next.id)
+
+      await h.actAs(SEED.hugo)
+      expect(await codeOf(() => h.repo.student.saveAnswer(attempt.id, question.id, 'Written after it'))).toBe(
+        'TEST_NOT_AVAILABLE',
+      )
     })
   })
 }

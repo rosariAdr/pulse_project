@@ -141,3 +141,13 @@ describe('writing the entrance test', () => {
     expect(test?.questions.map((q) => q.prompt)).toEqual(['What makes a dataset trustworthy?'])
   })
 })
+
+describe('the time these tests get', () => {
+  // Typing through user-event re-renders the screen at every keystroke. On a
+  // slow machine running several gates at once, the tests above took up to 8 s,
+  // and Vitest's 5 s default turned the gate red at random. vitest.config.ts
+  // sets the margin; this keeps it from being tidied away.
+  it('leaves room to type a question on a slow machine', ({ task }) => {
+    expect(task.timeout).toBeGreaterThanOrEqual(10_000)
+  })
+})

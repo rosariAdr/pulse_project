@@ -27,7 +27,8 @@ import {
  * is a development double, never a security boundary.
  */
 
-type Account = { email: string; password: string }
+/** `unconfirmed` while the confirmation link has not been opened; absent once it has. */
+type Account = { email: string; password: string; unconfirmed?: true }
 type AnswerRow = { attemptId: string; questionId: string; studentProfileId: string; response: string }
 
 type TestRow = {
@@ -130,7 +131,7 @@ export function createFakeRepo(
      */
     requireEmailConfirmation?: boolean
   },
-): PulseRepo & { state: FakeState } {
+): PulseRepo & { state: FakeState; confirmEmail(email: string): void } {
   // Persistence is opt-in: the app asks for it so a refresh mid-demo keeps the
   // session and the answers; tests never do, so they start from a clean class.
   const stored = options?.persist ? readStored() : null
@@ -224,6 +225,13 @@ export function createFakeRepo(
   return {
     state,
 
+    /** Imitates the student opening the confirmation link. */
+    confirmEmail(email: string) {
+      const account = state.accounts.find((a) => a.email === lower(email))
+      if (account) delete account.unconfirmed
+      remember()
+    },
+
     auth: {
       async current() {
         return state.viewerEmail ? viewerFor(state.viewerEmail) : null
@@ -233,6 +241,8 @@ export function createFakeRepo(
         if (!account || account.password !== password) {
           throw new PulseError('BAD_CREDENTIALS', 'That email and password do not match.')
         }
+        // Supabase Auth refuses the sign-in until the link is opened.
+        if (account.unconfirmed) throw new PulseError('EMAIL_NOT_CONFIRMED', 'Open the confirmation link first.')
         const viewer = viewerFor(email)
         if (!viewer) throw new PulseError('NO_PROFILE')
         state.viewerEmail = lower(email)
@@ -243,15 +253,19 @@ export function createFakeRepo(
         const viewer = viewerFor(email)
         if (!viewer) throw new PulseError('NO_PROFILE', 'This email has no Pulse profile.')
         if (state.accounts.some((a) => a.email === lower(email))) {
-          // Already claimed: signing in is the right path, and we never say more than that.
-          throw new PulseError('BAD_CREDENTIALS', 'This profile already has an account. Sign in instead.')
+          // Already claimed, answered as the real project does, password untouched.
+          // Confirmation on: as for a new account, so as not to reveal it exists.
+          // Confirmation off: Supabase refuses the sign-up, which reads as NO_PROFILE.
+          if (options?.requireEmailConfirmation) throw new PulseError('CHECK_INBOX')
+          throw new PulseError('NO_PROFILE', 'This profile already has an account.')
         }
-        state.accounts.push({ email: lower(email), password })
         if (options?.requireEmailConfirmation) {
           // The account exists; the session waits for the confirmation link.
+          state.accounts.push({ email: lower(email), password, unconfirmed: true })
           remember()
           throw new PulseError('CHECK_INBOX', 'Open the confirmation link, then sign in.')
         }
+        state.accounts.push({ email: lower(email), password })
         state.viewerEmail = lower(email)
         remember()
         return viewer
@@ -333,18 +347,24 @@ export function createFakeRepo(
 
       async saveAnswer(attemptId, questionId, response) {
         const viewer = requireStudent()
-        const attempt = openAttempt(attemptId, viewer.profileIds)
-        if (!state.questions.some((q) => q.id === questionId && q.testId === attempt.testId)) {
-          throw new PulseError('NOT_AUTHORISED', 'That question belongs to another test.')
-        }
+        // The same checks as save_answer() in the database, in the same order,
+        // so the same mistake gets the same refusal from both.
         if (response.length > MAX_ANSWER_LENGTH) {
           throw new PulseError('ANSWER_TOO_LONG', `An answer is limited to ${MAX_ANSWER_LENGTH} characters.`)
         }
-        // Same grace as save_answer() in the database: the limit plus two minutes.
+        const attempt = openAttempt(attemptId, viewer.profileIds)
         const test = state.tests.find((t) => t.id === attempt.testId)!
+        // A new version closes the previous one, attempts in progress included.
+        if (test.status !== 'published') {
+          throw new PulseError('TEST_NOT_AVAILABLE', 'This test is closed.')
+        }
+        // Same grace as the database: the limit plus two minutes.
         const deadline = new Date(attempt.startedAt).getTime() + (test.timeLimitMinutes + 2) * 60_000
         if (Date.now() > deadline) {
           throw new PulseError('TIME_UP', 'The time for this test has run out.')
+        }
+        if (!state.questions.some((q) => q.id === questionId && q.testId === attempt.testId)) {
+          throw new PulseError('NOT_AUTHORISED', 'That question belongs to another test.')
         }
         const existing = state.answers.find((r) => r.attemptId === attemptId && r.questionId === questionId)
         if (existing) existing.response = response
@@ -477,11 +497,18 @@ export function createFakeRepo(
         remember()
       },
 
-      async rawResults(moduleId) {
+      async rawResults(moduleId, testId) {
         requireMaster()
         const mod = demo.modules.find((m) => m.id === moduleId)
         if (!mod) throw new PulseError('NOT_AUTHORISED', 'No such module.')
-        const test = state.tests.find((t) => t.moduleId === moduleId) ?? null
+        // A draft has no answers: it never stands in for the version the class took.
+        const versions = state.tests
+          .filter((t) => t.moduleId === moduleId && t.status !== 'draft')
+          .sort((a, b) => b.version - a.version)
+        const test = testId
+          ? (versions.find((t) => t.id === testId) ?? null)
+          : (versions.find((t) => t.status === 'published') ?? versions[0] ?? null)
+        if (testId && !test) throw new PulseError('TEST_NOT_AVAILABLE', 'No such version of this module’s test.')
         const classIds = demo.classModules.filter((cm) => cm.moduleId === moduleId).map((cm) => cm.classId)
         const profiles = demo.profiles.filter((p) => classIds.includes(p.classId))
         const questions = test ? questionsIn(state.questions, test.id) : []

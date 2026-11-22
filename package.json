@@ -19,7 +19,8 @@
     "test:integration": "supabase db reset && vitest run -c vitest.integration.config.ts",
     "test:all": "npm run test && npm run test:e2e",
     "check:secrets": "node scripts/check-secrets.mjs",
-    "verify": "npm run lint && npm run typecheck && npm test && npm run check:secrets && npm run build"
+    "verify": "npm run lint && npm run typecheck && npm test && npm run check:secrets && npm run build",
+    "porte": "npm run verify && npm run test:e2e"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
