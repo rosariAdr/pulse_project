@@ -57,13 +57,22 @@ const toQuestion = (r: QuestionRow): Question => ({
 type SupabaseFailure = { message?: string; code?: string; status?: number; name?: string }
 
 /**
- * The request never reached Supabase, or came back without an answer. Auth says
- * so by name; PostgREST passes on the browser's own words, which differ per
- * engine (Chrome, Firefox, Safari, Node), or an AbortError on a timeout.
+ * The request never reached Supabase, or came back without an answer. PostgREST
+ * passes on the browser's own words, which differ per engine (Chrome, Firefox,
+ * Safari, Node), or an AbortError on a timeout.
+ *
+ * Auth files more than cuts under AuthRetryableFetchError: auth-js puts every
+ * 5xx there too (lib/fetch.js, NETWORK_ERROR_CODES), including the HTTP 500
+ * "Database error saving new user" that the PULSE_NO_PROFILE trigger causes.
+ * Only status 0 (fetch itself failed) and a gateway's 502 and above mean the
+ * project could not be reached; a 500 or 501 is Supabase answering.
  */
 function isCut(error: SupabaseFailure | null): boolean {
   if (!error) return false
-  if (error.name === 'AuthRetryableFetchError') return true
+  if (error.name === 'AuthRetryableFetchError') {
+    const status = error.status ?? 0
+    return status === 0 || status >= 502
+  }
   return /failed to fetch|fetch failed|networkerror|load failed|network request failed|aborterror/i.test(
     error.message ?? '',
   )
